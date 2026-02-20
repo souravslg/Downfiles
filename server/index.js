@@ -131,102 +131,105 @@ app.post('/api/info', async (req, res) => {
   } catch { }
 
   console.log(`[INFO] Fetching: ${url}`);
-  const args = [
-    '--dump-json',
-    '--no-playlist',
-    '--no-warnings',
-    '--impersonate', 'chrome',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
-    '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=android',
-    '--socket-timeout', '30'
-  ];
 
-  // Handle cookies for datacenter IP bypass
-  const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-  if (process.env.YOUTUBE_COOKIES) {
-    const safeCookies = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-    fs.writeFileSync(cookiesPath, safeCookies);
-    args.push('--cookies', cookiesPath);
-  } else if (fs.existsSync(cookiesPath)) {
-    args.push('--cookies', cookiesPath);
+  // Helper: run yt-dlp with a given player_client, returns {code, stdout, stderr}
+  function runYtDlp(playerClient) {
+    return new Promise((resolve) => {
+      const args = [
+        '--dump-json', '--no-playlist', '--no-warnings',
+        '--impersonate', 'chrome',
+        '--add-header', 'Accept-Encoding: gzip, deflate, br',
+        '--add-header', 'Accept-Language: en-US,en;q=0.9',
+        '--extractor-args', `youtube:player_client=${playerClient}`,
+        '--socket-timeout', '30'
+      ];
+      const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
+      if (process.env.YOUTUBE_COOKIES) {
+        const safeCookies = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+        fs.writeFileSync(cookiesPath, safeCookies);
+        args.push('--cookies', cookiesPath);
+      } else if (fs.existsSync(cookiesPath)) {
+        args.push('--cookies', cookiesPath);
+      }
+      args.push(url);
+      let stdout = '', stderr = '';
+      const proc = spawn(getYtDlpCmd(), args);
+      proc.stdout.on('data', d => { stdout += d.toString(); });
+      proc.stderr.on('data', d => { stderr += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
+      proc.on('close', code => resolve({ code, stdout, stderr }));
+    });
   }
 
-  args.push(url);
+  // Try clients in order; with cookies android is fine, without try web as fallback
+  const clients = process.env.YOUTUBE_COOKIES ? ['android'] : ['android', 'web'];
+  let result;
+  for (const client of clients) {
+    result = await runYtDlp(client);
+    if (result.code === 0) break;
+    if (!result.stderr.includes('Sign in') && !result.stderr.includes('bot')) break;
+    console.log(`[INFO] client=${client} bot-blocked, trying next...`);
+  }
+  const { code, stdout: output, stderr: errOutput } = result;
 
-  let output = '';
-  let errOutput = '';
-
-  const proc = spawn(getYtDlpCmd(), args);
-
-  proc.stdout.on('data', (data) => { output += data.toString(); });
-  proc.stderr.on('data', (data) => {
-    errOutput += data.toString();
-    process.stdout.write('[yt-dlp stderr] ' + data.toString());
-  });
-
-  proc.on('close', (code) => {
-    console.log(`[INFO] yt-dlp exited with code ${code}`);
-    console.log(`[INFO] stdout length: ${output.length}`);
-    if (code !== 0) {
-      let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
-      if (errOutput.includes('DRM protected')) {
-        friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
-      } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
-        friendly = 'This video is private or requires sign-in.';
-      } else if (errOutput.includes('not available') || errOutput.includes('unavailable')) {
-        friendly = 'This video is unavailable in your region or has been removed.';
-      }
-      return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
+  console.log(`[INFO] yt-dlp exited with code ${code}`);
+  if (code !== 0) {
+    let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+    if (errOutput.includes('DRM protected')) {
+      friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
+    } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
+      friendly = 'This video is private or requires sign-in.';
+    } else if (errOutput.includes('not available') || errOutput.includes('unavailable')) {
+      friendly = 'This video is unavailable in your region or has been removed.';
     }
-    try {
-      const info = JSON.parse(output);
-      const formats = (info.formats || [])
-        .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
-        .map(f => ({
-          format_id: f.format_id,
-          ext: f.ext,
-          resolution: f.resolution || (f.height ? `${f.height}p` : 'audio'),
-          filesize: f.filesize || f.filesize_approx || null,
-          vcodec: f.vcodec,
-          acodec: f.acodec,
-          fps: f.fps || null,
-          tbr: f.tbr || null,
-          note: f.format_note || ''
-        }))
-        .sort((a, b) => {
-          const getH = r => parseInt(r) || 0;
-          return getH(b.resolution) - getH(a.resolution);
-        });
-
-      // Deduplicate by resolution
-      const seen = new Set();
-      const uniqueFormats = formats.filter(f => {
-        const key = f.resolution + f.ext;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
+    return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
+  }
+  try {
+    const info = JSON.parse(output);
+    const formats = (info.formats || [])
+      .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
+      .map(f => ({
+        format_id: f.format_id,
+        ext: f.ext,
+        resolution: f.resolution || (f.height ? `${f.height}p` : 'audio'),
+        filesize: f.filesize || f.filesize_approx || null,
+        vcodec: f.vcodec,
+        acodec: f.acodec,
+        fps: f.fps || null,
+        tbr: f.tbr || null,
+        note: f.format_note || ''
+      }))
+      .sort((a, b) => {
+        const getH = r => parseInt(r) || 0;
+        return getH(b.resolution) - getH(a.resolution);
       });
 
-      res.json({
-        title: info.title,
-        thumbnail: info.thumbnail,
-        duration: info.duration,
-        uploader: info.uploader || info.channel,
-        platform: info.extractor_key,
-        webpage_url: info.webpage_url,
-        formats: uniqueFormats,
-        best_format: info.format_id
-      });
-    } catch (e) {
-      console.error('[INFO] JSON parse failed:', e.message);
-      console.error('[INFO] Raw output start:', output.slice(0, 200));
-      res.status(500).json({
-        error: 'Failed to parse video info',
-        details: errOutput.slice(0, 500) || 'yt-dlp output was empty or invalid'
-      });
-    }
-  });
+    // Deduplicate by resolution
+    const seen = new Set();
+    const uniqueFormats = formats.filter(f => {
+      const key = f.resolution + f.ext;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    res.json({
+      title: info.title,
+      thumbnail: info.thumbnail,
+      duration: info.duration,
+      uploader: info.uploader || info.channel,
+      platform: info.extractor_key,
+      webpage_url: info.webpage_url,
+      formats: uniqueFormats,
+      best_format: info.format_id
+    });
+  } catch (e) {
+    console.error('[INFO] JSON parse failed:', e.message);
+    console.error('[INFO] Raw output start:', output.slice(0, 200));
+    res.status(500).json({
+      error: 'Failed to parse video info',
+      details: errOutput.slice(0, 500) || 'yt-dlp output was empty or invalid'
+    });
+  }
 });
 
 // Download to a temp file, then stream to client.
