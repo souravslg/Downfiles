@@ -33,9 +33,25 @@ html {
   scroll-behavior: smooth;
 }
 
+@keyframes slowGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 body {
   font-family: var(--font);
-  background: var(--bg);
+  background: linear-gradient(-45deg, #09090e, #110d1a, #0b1120, #0a0a0a);
+  background-size: 400% 400%;
+  animation: slowGradient 15s ease infinite;
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
