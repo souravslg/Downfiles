@@ -106,12 +106,25 @@ function safeFilename(title, ext) {
 
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
-  const { url } = req.body;
+  let { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
+
+  // Strip YouTube playlist/mix params — only keep the video ID
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('youtube.com')) {
+      const v = u.searchParams.get('v');
+      if (v) url = `https://www.youtube.com/watch?v=${v}`;
+    }
+  } catch { }
+
+  console.log(`[INFO] Fetching: ${url}`);
+  console.log(`[INFO] Using: ${getYtDlpCmd()}`);
 
   const args = [
     '--dump-json',
     '--no-playlist',
+    '--no-warnings',
     '--socket-timeout', '30',
     url
   ];
@@ -122,11 +135,21 @@ app.post('/api/info', async (req, res) => {
   const proc = spawn(getYtDlpCmd(), args, { shell: true });
 
   proc.stdout.on('data', (data) => { output += data.toString(); });
-  proc.stderr.on('data', (data) => { errOutput += data.toString(); });
+  proc.stderr.on('data', (data) => {
+    errOutput += data.toString();
+    process.stdout.write('[yt-dlp stderr] ' + data.toString());
+  });
 
   proc.on('close', (code) => {
+    console.log(`[INFO] yt-dlp exited with code ${code}`);
+    console.log(`[INFO] stdout length: ${output.length}`);
     if (code !== 0) {
-      return res.status(400).json({ error: 'Could not fetch video info. Make sure the URL is valid.', details: errOutput });
+      const friendly = errOutput.includes('Sign in') || errOutput.includes('private')
+        ? 'This video is private or requires sign-in.'
+        : errOutput.includes('not available') || errOutput.includes('unavailable')
+          ? 'This video is unavailable in your region or has been removed.'
+          : 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
     }
     try {
       const info = JSON.parse(output);
@@ -168,7 +191,12 @@ app.post('/api/info', async (req, res) => {
         best_format: info.format_id
       });
     } catch (e) {
-      res.status(500).json({ error: 'Failed to parse video info' });
+      console.error('[INFO] JSON parse failed:', e.message);
+      console.error('[INFO] Raw output start:', output.slice(0, 200));
+      res.status(500).json({
+        error: 'Failed to parse video info',
+        details: errOutput.slice(0, 500) || 'yt-dlp output was empty or invalid'
+      });
     }
   });
 });
