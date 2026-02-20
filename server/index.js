@@ -213,22 +213,20 @@ app.post('/api/info', async (req, res) => {
   });
 });
 
-// Helper to stream a download response
+// Download to a temp file, then stream to client.
+// mp4 can't be piped to stdout (moov atom at end), so temp file is required.
 function streamDownload(res, req, url, format_id, isAudio, title) {
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
-  const filename = safeFilename(title, ext);
-
-  setDownloadFilename(res, title, ext);
-  res.setHeader('Content-Type', contentType);
-  res.setHeader('Cache-Control', 'no-store');
+  const tmpFile = path.join('/tmp', `downfiles_${uuidv4()}.${ext}`);
 
   const args = [
     '-f', formatArg,
     '--no-playlist',
     '--socket-timeout', '60',
-    '-o', '-'
+    '--no-warnings',
+    '-o', tmpFile
   ];
 
   if (isAudio) {
@@ -237,20 +235,47 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
 
   if (HAS_FFMPEG) {
     args.push('--ffmpeg-location', FFMPEG_PATH);
-    args.push('--merge-output-format', 'mp4');
+    if (!isAudio) args.push('--merge-output-format', 'mp4');
   }
 
   args.push(url);
 
   console.log(`[DOWNLOAD] ${url}`);
   console.log(`  format: ${formatArg} | audio: ${isAudio} | ffmpeg: ${HAS_FFMPEG}`);
+  console.log(`  tmp: ${tmpFile}`);
 
   const proc = spawn(getYtDlpCmd(), args, { shell: true });
-  proc.stdout.pipe(res);
-  proc.stderr.on('data', d => process.stdout.write('[yt-dlp] ' + d.toString()));
-  proc.on('close', code => console.log(`[DOWNLOAD] done (code ${code})`));
+  let errOutput = '';
+  proc.stderr.on('data', d => {
+    errOutput += d.toString();
+    process.stdout.write('[yt-dlp] ' + d.toString());
+  });
+
+  proc.on('close', (code) => {
+    console.log(`[DOWNLOAD] yt-dlp exited ${code}`);
+    if (code !== 0) {
+      if (!res.headersSent) res.status(500).send('Download failed: ' + errOutput.slice(0, 200));
+      return;
+    }
+
+    // Stream the temp file to client, then delete it
+    const sendFile = tmpFile; // yt-dlp may rename, check for exact file first
+    const cleanup = (f) => { try { fs.unlinkSync(f); } catch { } };
+
+    setDownloadFilename(res, title, ext);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'no-store');
+
+    const stream = fs.createReadStream(sendFile);
+    stream.on('error', (err) => {
+      console.error('[DOWNLOAD] read error:', err.message);
+      if (!res.headersSent) res.status(500).send('Failed to read downloaded file');
+    });
+    stream.on('end', () => cleanup(sendFile));
+    stream.pipe(res);
+  });
+
   req.on('close', () => proc.kill('SIGTERM'));
-  res.on('finish', () => proc.kill('SIGTERM'));
 }
 
 // GET /api/download?url=...&format_id=...&audio_only=1&title=...
