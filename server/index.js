@@ -193,6 +193,7 @@ app.post('/api/info', async (req, res) => {
     return new Promise((resolve) => {
       const args = [
         '--dump-json', '--no-playlist', '--no-warnings',
+        '--no-check-formats',
         '--impersonate', 'chrome',
         '--add-header', 'Accept-Encoding: gzip, deflate, br',
         '--add-header', 'Accept-Language: en-US,en;q=0.9',
