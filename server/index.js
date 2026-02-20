@@ -137,6 +137,7 @@ app.post('/api/info', async (req, res) => {
     '--dump-json',
     '--no-playlist',
     '--no-warnings',
+    '--impersonate', 'chrome',
     '--socket-timeout', '30',
     url
   ];
@@ -232,6 +233,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--no-playlist',
     '--socket-timeout', '60',
     '--no-warnings',
+    '--impersonate', 'chrome',
     '-o', tmpFile
   ];
 
