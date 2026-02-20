@@ -138,9 +138,19 @@ app.post('/api/info', async (req, res) => {
     '--add-header', '"Accept-Encoding: gzip, deflate, br"',
     '--add-header', '"Accept-Language: en-US,en;q=0.9"',
     '--extractor-args', '"youtube:player_client=tv"',
-    '--socket-timeout', '30',
-    url
+    '--socket-timeout', '30'
   ];
+
+  // Handle cookies for datacenter IP bypass
+  const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
+  if (process.env.YOUTUBE_COOKIES) {
+    fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
+    args.push('--cookies', cookiesPath);
+  } else if (fs.existsSync(cookiesPath)) {
+    args.push('--cookies', cookiesPath);
+  }
+
+  args.push(url);
 
   let output = '';
   let errOutput = '';
@@ -241,6 +251,15 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--extractor-args', '"youtube:player_client=tv"',
     '-o', tmpFile
   ];
+
+  if (process.env.YOUTUBE_COOKIES) {
+    const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
+    fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
+    args.push('--cookies', cookiesPath);
+  } else {
+    const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
+    if (fs.existsSync(cookiesPath)) args.push('--cookies', cookiesPath);
+  }
 
   if (isAudio) {
     args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
