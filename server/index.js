@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const os = require('os');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 
@@ -72,34 +71,6 @@ if (process.platform === 'win32' && fs.existsSync(FFMPEG_LOCAL_WIN)) {
 
 function getYtDlpCmd() {
   return YT_DLP_CMD;
-}
-
-// On startup: write cookies to temp path so every yt-dlp call can use them
-const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
-const COOKIES_REPO_PATH = path.join(__dirname, 'yt_cookies.txt');
-if (process.env.YOUTUBE_COOKIES) {
-  fs.writeFileSync(COOKIES_TMP_PATH, process.env.YOUTUBE_COOKIES);
-  console.log('✅ Cookies loaded from YOUTUBE_COOKIES env var');
-} else if (fs.existsSync(COOKIES_REPO_PATH)) {
-  fs.copyFileSync(COOKIES_REPO_PATH, COOKIES_TMP_PATH);
-  console.log('✅ Cookies loaded from server/yt_cookies.txt');
-} else {
-  console.log('⚠️  No cookies found — YouTube may throttle to 360p on Railway');
-}
-
-// Helper used by both /api/info and streamDownload
-function getCookiesArgs() {
-  if (fs.existsSync(COOKIES_TMP_PATH)) {
-    return ['--cookies', COOKIES_TMP_PATH];
-  }
-  return [];
-}
-
-// Determine YouTube player client based on cookie availability
-function getYouTubeClient() {
-  // tv_embedded: works on datacenter IPs, supports 1080p, doesn't need PO tokens
-  // android: bypasses IP blocks without cookies but caps at 360p
-  return fs.existsSync(COOKIES_TMP_PATH) ? 'tv_embedded' : 'android';
 }
 
 // Build a safe format string depending on ffmpeg availability
@@ -188,52 +159,34 @@ app.post('/api/info', async (req, res) => {
 
   console.log(`[INFO] Fetching: ${url}`);
 
-  // Helper: run yt-dlp with a given player_client, returns {code, stdout, stderr}
-  function runYtDlp(playerClient) {
-    return new Promise((resolve) => {
-      const args = [
-        '--dump-json', '--no-playlist', '--no-warnings',
-        '--no-check-formats',
-        '--impersonate', 'chrome',
-        '--add-header', 'Accept-Encoding: gzip, deflate, br',
-        '--add-header', 'Accept-Language: en-US,en;q=0.9',
-        '--extractor-args', `youtube:player_client=${playerClient}`,
-        '--socket-timeout', '30',
-        ...getCookiesArgs(),
-        url
-      ];
-      let stdout = '', stderr = '';
-      const proc = spawn(getYtDlpCmd(), args);
-      proc.stdout.on('data', d => { stdout += d.toString(); });
-      proc.stderr.on('data', d => { stderr += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
-      proc.on('close', code => resolve({ code, stdout, stderr }));
-    });
-  }
+  const args = [
+    '--dump-json', '--no-playlist', '--no-warnings',
+    '--impersonate', 'chrome',
+    '--add-header', 'Accept-Encoding: gzip, deflate, br',
+    '--add-header', 'Accept-Language: en-US,en;q=0.9',
+    '--extractor-args', 'youtube:player_client=android',
+    '--socket-timeout', '30',
+    url
+  ];
 
-  // Use web client when cookies present (1080p+), android when not (IP bypass)
-  const clients = fs.existsSync(COOKIES_TMP_PATH) ? ['web', 'android'] : ['android', 'web'];
-  let result;
-  for (const client of clients) {
-    result = await runYtDlp(client);
-    if (result.code === 0) break;
-    if (!result.stderr.includes('Sign in') && !result.stderr.includes('bot')) break;
-    console.log(`[INFO] client=${client} bot-blocked, trying next...`);
-  }
-  const { code, stdout: output, stderr: errOutput } = result;
-
-  console.log(`[INFO] yt-dlp exited with code ${code}`);
-  if (code !== 0) {
-    let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
-    if (errOutput.includes('DRM protected')) {
-      friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
-    } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
-      friendly = 'This video is private or requires sign-in.';
-    } else if (errOutput.includes('not available') || errOutput.includes('unavailable')) {
-      friendly = 'This video is unavailable in your region or has been removed.';
+  let output = '', errOutput = '';
+  const proc = spawn(getYtDlpCmd(), args);
+  proc.stdout.on('data', d => { output += d.toString(); });
+  proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
+  proc.on('close', (code) => {
+    console.log(`[INFO] yt-dlp exited with code ${code}`);
+    if (code !== 0) {
+      let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      if (errOutput.includes('DRM protected')) {
+        friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
+      } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
+        friendly = 'This video is private or requires sign-in.';
+      } else if (errOutput.includes('not available') || errOutput.includes('unavailable')) {
+        friendly = 'This video is unavailable in your region or has been removed.';
+      }
+      return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
     }
-    return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
-  }
-  try {
+
     const info = JSON.parse(output);
     const formats = (info.formats || [])
       .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
@@ -262,37 +215,32 @@ app.post('/api/info', async (req, res) => {
       return true;
     });
 
-    res.json({
-      title: info.title,
-      thumbnail: info.thumbnail,
-      duration: info.duration,
-      uploader: info.uploader || info.channel,
-      platform: info.extractor_key,
-      webpage_url: info.webpage_url,
-      formats: uniqueFormats,
-      best_format: info.format_id
-    });
-  } catch (e) {
-    console.error('[INFO] JSON parse failed:', e.message);
-    console.error('[INFO] Raw output start:', output.slice(0, 200));
-    res.status(500).json({
-      error: 'Failed to parse video info',
-      details: errOutput.slice(0, 500) || 'yt-dlp output was empty or invalid'
-    });
-  }
+    try {
+      res.json({
+        title: info.title,
+        thumbnail: info.thumbnail,
+        duration: info.duration,
+        uploader: info.uploader || info.channel,
+        platform: info.extractor_key,
+        webpage_url: info.webpage_url,
+        formats: uniqueFormats,
+        best_format: info.format_id
+      });
+    } catch (e) {
+      console.error('[INFO] JSON parse failed:', e.message);
+      res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
+    }
+  });
 });
 
 // Download to a temp file, then stream to client.
-// mp4 can't be piped to stdout (moov atom at end), so temp file is required.
 function streamDownload(res, req, url, format_id, isAudio, title) {
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
 
-  // Use os.tmpdir() instead of hardcoded /tmp, and avoid extension conflicts
   const tmpId = uuidv4();
-  // Tell yt-dlp to output exactly exactly this file
-  const tmpFile = path.join(os.tmpdir(), `downfiles_${tmpId}.${ext}`);
+  const tmpFile = require('path').join(require('os').tmpdir(), `downfiles_${tmpId}.${ext}`);
 
   const args = [
     '-f', formatArg,
@@ -302,11 +250,9 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--impersonate', 'chrome',
     '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', `youtube:player_client=${getYouTubeClient()}`,
+    '--extractor-args', 'youtube:player_client=android',
     '-o', tmpFile
   ];
-
-  args.push(...getCookiesArgs());
 
   if (isAudio) {
     args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
