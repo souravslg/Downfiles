@@ -158,11 +158,14 @@ app.post('/api/info', async (req, res) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
     console.log(`[INFO] stdout length: ${output.length}`);
     if (code !== 0) {
-      const friendly = errOutput.includes('Sign in') || errOutput.includes('private')
-        ? 'This video is private or requires sign-in.'
-        : errOutput.includes('not available') || errOutput.includes('unavailable')
-          ? 'This video is unavailable in your region or has been removed.'
-          : 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      if (errOutput.includes('DRM protected')) {
+        friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
+      } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
+        friendly = 'This video is private or requires sign-in.';
+      } else if (errOutput.includes('not available') || errOutput.includes('unavailable')) {
+        friendly = 'This video is unavailable in your region or has been removed.';
+      }
       return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
     }
     try {
