@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supported Platforms – DownFiles</title>
+    <meta name="description"
+        content="DownFiles supports 50+ platforms including YouTube, TikTok, Instagram, Facebook, and more.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
+</head>
+
+<body>
+    <div class="grid-bg"></div>
+    <nav class="navbar">
+        <a href="index.html" class="navbar-logo">
+            <svg viewBox="0 0 40 40" fill="none">
+                <rect width="40" height="40" rx="10" fill="url(#lg3)" />
+                <path d="M20 10v14M13 17l7 7 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M10 28h20" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                <defs>
+                    <linearGradient id="lg3" x1="0" y1="0" x2="40" y2="40">
+                        <stop stop-color="#7c3aed" />
+                        <stop offset="1" stop-color="#4f46e5" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            DOWNFILES
+        </a>
+        <div class="navbar-links">
+            <a href="track.html" class="nav-link">Track Download</a>
+            <a href="platforms.html" class="nav-link active">Platforms</a>
+            <a href="guide.html" class="nav-link">Guide</a>
+            <a href="faq.html" class="nav-link">FAQ</a>
+        </div>
+        <div class="navbar-actions">
+            <a href="https://www.buymeacoffee.com" target="_blank" class="btn-support">☕ Support Us</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="page-hero">
+            <div class="hero-badge animate-fade-down">🌐 50+ Platforms</div>
+            <h1 class="hero-title">Supported Platforms</h1>
+            <p style="color:var(--text-muted);margin-top:0.75rem;font-size:1rem">Download from all your favourite social
+                media and video platforms</p>
+        </div>
+
+        <div class="platforms-grid-section">
+            <div
+                style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+                <h2 style="font-size:1rem;font-weight:700;color:var(--text-muted)">All Supported Platforms</h2>
+                <a href="index.html"
+                    style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.25rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-size:0.85rem;font-weight:700">⬇️
+                    Start Downloading</a>
+            </div>
+            <div class="platforms-grid" id="platforms-grid"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0">
+            <span>© 2026 DownFiles. All rights reserved.</span>
+            <div class="footer-bottom-links">
+                <a href="legal/terms.html">Terms</a>
+                <a href="legal/privacy.html">Privacy</a>
+                <a href="legal/dmca.html">DMCA</a>
+            </div>
+            <span>Built with <span class="heart">♥</span> for the Social Community</span>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { renderPlatformsGrid } from './js/platforms.js';
+        renderPlatformsGrid();
+    </script>
+</body>
+
+</html>

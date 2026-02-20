@@ -1,0 +1,9 @@
+node_modules/
+server/ffmpeg.exe
+server/ffmpeg
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.zip
+*.tmp

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Download – DownFiles</title>
+    <meta name="description" content="Track the status of your DownFiles download using your Job ID.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
+</head>
+
+<body>
+    <div class="grid-bg"></div>
+
+    <nav class="navbar">
+        <a href="index.html" class="navbar-logo">
+            <svg viewBox="0 0 40 40" fill="none">
+                <rect width="40" height="40" rx="10" fill="url(#lg2)" />
+                <path d="M20 10v14M13 17l7 7 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M10 28h20" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                <defs>
+                    <linearGradient id="lg2" x1="0" y1="0" x2="40" y2="40">
+                        <stop stop-color="#7c3aed" />
+                        <stop offset="1" stop-color="#4f46e5" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            DOWNFILES
+        </a>
+        <div class="navbar-links">
+            <a href="track.html" class="nav-link active">Track Download</a>
+            <a href="platforms.html" class="nav-link">Platforms</a>
+            <a href="guide.html" class="nav-link">Guide</a>
+            <a href="faq.html" class="nav-link">FAQ</a>
+        </div>
+        <div class="navbar-actions">
+            <a href="https://www.buymeacoffee.com" target="_blank" class="btn-support">☕ Support Us</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="track-section">
+            <div class="hero-badge animate-fade-down">
+                <span>📡</span><span>Download Tracker</span>
+            </div>
+            <h1 class="hero-title" style="font-size:clamp(2rem,5vw,3rem)">Track Your Download</h1>
+            <p style="color:var(--text-muted);margin-top:0.5rem;font-size:0.95rem">Enter your Job ID to check the status
+                of your download</p>
+
+            <div class="job-input-row">
+                <input type="text" id="job-input" class="job-input" placeholder="Enter Job ID (e.g. 3e4f-8a2b-...)">
+                <button class="btn-track" id="track-btn">Track</button>
+            </div>
+
+            <div class="status-card" id="status-card"></div>
+
+            <div
+                style="margin-top:3rem;padding:1.5rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);text-align:left">
+                <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:0.75rem">ℹ️ What is a Job ID?</h3>
+                <p style="font-size:0.8rem;color:var(--text-muted);line-height:1.7">When you download a large or
+                    high-quality video, DownFiles creates a background job and gives you a Job ID. Paste that ID here to
+                    check if your download is ready. Short/small files download immediately without a job ID.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0">
+            <span>© 2026 DownFiles. All rights reserved.</span>
+            <div class="footer-bottom-links">
+                <a href="legal/terms.html">Terms</a>
+                <a href="legal/privacy.html">Privacy</a>
+                <a href="legal/dmca.html">DMCA</a>
+            </div>
+            <span>Built with <span class="heart">♥</span> for the Social Community</span>
+        </div>
+    </footer>
+
+    <script src="js/track.js" type="module"></script>
+</body>
+
+</html>

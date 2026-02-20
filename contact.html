@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact – DownFiles</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
+</head>
+
+<body>
+    <div class="grid-bg"></div>
+    <nav class="navbar">
+        <a href="index.html" class="navbar-logo">
+            <svg viewBox="0 0 40 40" fill="none">
+                <rect width="40" height="40" rx="10" fill="url(#lg7)" />
+                <path d="M20 10v14M13 17l7 7 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M10 28h20" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                <defs>
+                    <linearGradient id="lg7" x1="0" y1="0" x2="40" y2="40">
+                        <stop stop-color="#7c3aed" />
+                        <stop offset="1" stop-color="#4f46e5" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            DOWNFILES
+        </a>
+        <div class="navbar-links">
+            <a href="track.html" class="nav-link">Track Download</a>
+            <a href="platforms.html" class="nav-link">Platforms</a>
+            <a href="guide.html" class="nav-link">Guide</a>
+            <a href="faq.html" class="nav-link">FAQ</a>
+        </div>
+        <div class="navbar-actions">
+            <a href="https://www.buymeacoffee.com" target="_blank" class="btn-support">☕ Support Us</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="page-hero">
+            <div class="hero-badge animate-fade-down">✉️ Get In Touch</div>
+            <h1 class="hero-title">Contact Us</h1>
+            <p style="color:var(--text-muted);margin-top:0.75rem">We'd love to hear from you — bug reports, feature
+                ideas, partnerships.</p>
+        </div>
+
+        <div class="about-section">
+            <div class="contact-card">
+                <div class="contact-field">
+                    <label for="contact-name">Your Name</label>
+                    <input type="text" id="contact-name" placeholder="John Doe">
+                </div>
+                <div class="contact-field">
+                    <label for="contact-email">Email Address</label>
+                    <input type="email" id="contact-email" placeholder="you@example.com">
+                </div>
+                <div class="contact-field">
+                    <label for="contact-subject">Subject</label>
+                    <input type="text" id="contact-subject" placeholder="Bug Report / Feature Request / Other">
+                </div>
+                <div class="contact-field">
+                    <label for="contact-msg">Message</label>
+                    <textarea id="contact-msg" placeholder="Describe your issue or feedback in detail..."></textarea>
+                </div>
+                <button class="btn-send" id="send-btn" onclick="handleSend()">Send Message</button>
+            </div>
+
+            <div id="send-feedback"
+                style="display:none;margin-top:1rem;padding:1rem 1.25rem;border-radius:var(--radius);background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);font-size:0.875rem">
+                ✅ Thank you! Your message has been sent. We'll get back to you soon.
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0">
+            <span>© 2026 DownFiles. All rights reserved.</span>
+            <div class="footer-bottom-links">
+                <a href="legal/terms.html">Terms</a>
+                <a href="legal/privacy.html">Privacy</a>
+                <a href="legal/dmca.html">DMCA</a>
+            </div>
+            <span>Built with <span class="heart">♥</span> for the Social Community</span>
+        </div>
+    </footer>
+
+    <script>
+        function handleSend() {
+            const name = document.getElementById('contact-name').value.trim();
+            const email = document.getElementById('contact-email').value.trim();
+            const msg = document.getElementById('contact-msg').value.trim();
+            if (!name || !email || !msg) { alert('Please fill in all required fields.'); return; }
+            document.getElementById('send-feedback').style.display = 'block';
+            document.getElementById('send-btn').disabled = true;
+            document.getElementById('send-btn').innerText = 'Sent ✓';
+        }
+    </script>
+</body>
+
+</html>

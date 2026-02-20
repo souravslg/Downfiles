@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader – DownFiles</title>
+    <meta name="description"
+        content="Download YouTube videos, Shorts, and playlists in up to 8K quality. No sign-up required. Free forever.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/animations.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
+    <style>
+        .platform-hero-icon {
+            font-size: 4rem;
+            display: block;
+            text-align: center;
+            margin-bottom: 1rem;
+            animation: float 3s ease infinite;
+        }
+
+        .features-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .feature-item .check {
+            color: var(--green);
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="grid-bg"></div>
+    <nav class="navbar">
+        <a href="../index.html" class="navbar-logo">
+            <svg viewBox="0 0 40 40" fill="none">
+                <rect width="40" height="40" rx="10" fill="url(#lgYT)" />
+                <path d="M20 10v14M13 17l7 7 7-7" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                <path d="M10 28h20" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                <defs>
+                    <linearGradient id="lgYT" x1="0" y1="0" x2="40" y2="40">
+                        <stop stop-color="#7c3aed" />
+                        <stop offset="1" stop-color="#4f46e5" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            DOWNFILES
+        </a>
+        <div class="navbar-links">
+            <a href="../track.html" class="nav-link">Track Download</a>
+            <a href="../platforms.html" class="nav-link">Platforms</a>
+            <a href="../guide.html" class="nav-link">Guide</a>
+            <a href="../faq.html" class="nav-link">FAQ</a>
+        </div>
+        <div class="navbar-actions">
+            <a href="https://www.buymeacoffee.com" target="_blank" class="btn-support">☕ Support</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="page-hero">
+            <span class="platform-hero-icon">▶️</span>
+            <div class="hero-badge animate-fade-down">YouTube Downloader</div>
+            <h1 class="hero-title">Download YouTube Videos</h1>
+            <p style="color:var(--text-muted);margin-top:0.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K
+                quality. Free, fast, no watermark.</p>
+            <div style="margin-top:1.5rem">
+                <a href="../index.html"
+                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 2.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700;font-size:1rem">⬇️
+                    Download Now</a>
+            </div>
+        </div>
+
+        <div style="max-width:800px;margin:0 auto;padding:0 1.5rem 5rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2.5rem">
+                <div class="feature-card hover-lift">
+                    <span class="feature-icon">📹</span>
+                    <div class="feature-title">Up to 8K Resolution</div>
+                    <div class="feature-desc">Download at 4K, 8K, 1080p, 720p or any resolution YouTube offers.</div>
+                </div>
+                <div class="feature-card hover-lift">
+                    <span class="feature-icon">🎵</span>
+                    <div class="feature-title">Audio Only (MP3)</div>
+                    <div class="feature-desc">Extract high-quality MP3 audio from any YouTube video.</div>
+                </div>
+                <div class="feature-card hover-lift">
+                    <span class="feature-icon">📋</span>
+                    <div class="feature-title">Playlist Downloads</div>
+                    <div class="feature-desc">Download entire YouTube playlists with a single URL.</div>
+                </div>
+                <div class="feature-card hover-lift">
+                    <span class="feature-icon">⚡</span>
+                    <div class="feature-title">YouTube Shorts</div>
+                    <div class="feature-desc">Download Shorts just like regular videos — same URL, same process.</div>
+                </div>
+            </div>
+
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem">How to Download YouTube Videos</h2>
+            <div class="guide-step">
+                <div class="guide-step-num">1</div>
+                <div class="guide-step-content">
+                    <h3>Copy the YouTube URL</h3>
+                    <p>Go to the video on YouTube and copy the URL from the address bar.</p>
+                </div>
+            </div>
+            <div class="guide-step">
+                <div class="guide-step-num">2</div>
+                <div class="guide-step-content">
+                    <h3>Paste into DownFiles</h3>
+                    <p>Paste the URL into the input box on the <a href="../index.html" style="color:#a78bfa">DownFiles
+                            homepage</a>.</p>
+                </div>
+            </div>
+            <div class="guide-step">
+                <div class="guide-step-num">3</div>
+                <div class="guide-step-content">
+                    <h3>Choose Quality & Download</h3>
+                    <p>Select your preferred resolution or audio format, then click Download.</p>
+                </div>
+            </div>
+
+            <div style="text-align:center;margin-top:2rem">
+                <a href="../index.html"
+                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 2rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700">⬇️
+                    Start Downloading YouTube Videos</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0">
+            <span>© 2026 DownFiles. All rights reserved.</span>
+            <div class="footer-bottom-links"><a href="../legal/terms.html">Terms</a><a
+                    href="../legal/privacy.html">Privacy</a></div>
+            <span>Built with <span class="heart">♥</span> for the Social Community</span>
+        </div>
+    </footer>
+</body>
+
+</html>
