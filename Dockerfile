@@ -1,12 +1,12 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 # Install Python, pip, and ffmpeg
-RUN apk add --no-cache python3 py3-pip ffmpeg
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip ffmpeg curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-# Create python → python3 symlink (needed for yt-dlp detection)
-RUN ln -sf /usr/bin/python3 /usr/bin/python || true
 
 # Install yt-dlp and curl_cffi (required for --impersonate bypass)
 RUN pip3 install yt-dlp curl_cffi --break-system-packages && \
