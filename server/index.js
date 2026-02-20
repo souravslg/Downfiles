@@ -146,17 +146,28 @@ function setDownloadFilename(res, title, ext) {
 // GET /api/yt-debug - shows raw yt-dlp output for debugging
 app.get('/api/yt-debug', (req, res) => {
   const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-  const cookiesEnv = process.env.YOUTUBE_COOKIES || '';
-  const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-  const playerClient = cookiesEnv.length > 0 ? 'web' : 'android';
-  const dbgArgs = ['--dump-json', '--no-playlist', '--no-warnings', '--impersonate', 'chrome', '--add-header', 'Accept-Language: en-US,en;q=0.9', '--extractor-args', 'youtube:player_client=' + playerClient, '--socket-timeout', '20'];
-  if (cookiesEnv.length > 0) { fs.writeFileSync(cookiesPath, cookiesEnv); dbgArgs.push('--cookies', cookiesPath); }
-  dbgArgs.push(url);
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+  const playerClient = getYouTubeClient();
+  const dbgArgs = [
+    '--dump-json', '--no-playlist', '--no-warnings',
+    '--impersonate', 'chrome',
+    '--add-header', 'Accept-Language: en-US,en;q=0.9',
+    '--extractor-args', 'youtube:player_client=' + playerClient,
+    '--socket-timeout', '20',
+    ...getCookiesArgs(),
+    url
+  ];
   let out = '', err = '';
   const p2 = spawn(getYtDlpCmd(), dbgArgs);
   p2.stdout.on('data', d => { out += d; });
   p2.stderr.on('data', d => { err += d; });
-  p2.on('close', c => res.json({ code: c, hasCookies: cookiesEnv.length > 0, cookiesEnvLength: cookiesEnv.length, cookiesPreview: cookiesEnv.slice(0, 60), clientUsed: playerClient, stderr: err.slice(0, 500), stdout_len: out.length }));
+  p2.on('close', c => res.json({
+    code: c, hasCookies, clientUsed: playerClient,
+    cookiesTmpPath: COOKIES_TMP_PATH,
+    cookiesRepoPath: COOKIES_REPO_PATH,
+    repoFileExists: fs.existsSync(COOKIES_REPO_PATH),
+    stderr: err.slice(0, 500), stdout_len: out.length
+  }));
 });
 
 // POST /api/info - Get video info
