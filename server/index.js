@@ -184,8 +184,8 @@ app.post('/api/info', async (req, res) => {
     });
   }
 
-  // Try clients in order; with cookies android is fine, without try web as fallback
-  const clients = process.env.YOUTUBE_COOKIES ? ['android'] : ['android', 'web'];
+  // With cookies: try web first (1080p+), fallback to android. Without: android first (bypasses IP block).
+  const clients = process.env.YOUTUBE_COOKIES ? ['web', 'android'] : ['android', 'web'];
   let result;
   for (const client of clients) {
     result = await runYtDlp(client);
@@ -278,7 +278,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--impersonate', 'chrome',
     '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=android',
+    '--extractor-args', `youtube:player_client=${process.env.YOUTUBE_COOKIES ? 'web' : 'android'}`,
     '-o', tmpFile
   ];
 
