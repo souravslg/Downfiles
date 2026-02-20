@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const os = require('os');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 
@@ -269,8 +270,6 @@ app.post('/api/info', async (req, res) => {
 
 // Download to a temp file, then stream to client.
 // mp4 can't be piped to stdout (moov atom at end), so temp file is required.
-const os = require('os');
-
 function streamDownload(res, req, url, format_id, isAudio, title) {
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
