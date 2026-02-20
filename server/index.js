@@ -116,26 +116,21 @@ function setDownloadFilename(res, title, ext) {
     `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`);
 }
 
-// GET /api/yt-debug - shows raw yt-dlp output for debugging Railway blocks
+// GET /api/yt-debug - shows raw yt-dlp output for debugging
 app.get('/api/yt-debug', (req, res) => {
   const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-  const args = [
-    '--dump-json', '--no-playlist', '--no-warnings',
-    '--impersonate', 'chrome',
-    '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=android',
-    '--socket-timeout', '20', url
-  ];
+  const cookiesEnv = process.env.YOUTUBE_COOKIES || '';
   const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-  const hasCookies = !!process.env.YOUTUBE_COOKIES || require('fs').existsSync(cookiesPath);
-  if (process.env.YOUTUBE_COOKIES) {
-    const safe = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n');
-    require('fs').writeFileSync(cookiesPath, safe);
-    args.splice(-1, 0, '--cookies', cookiesPath);
-  }
+  const playerClient = cookiesEnv.length > 0 ? 'web' : 'android';
+  const dbgArgs = ['--dump-json', '--no-playlist', '--no-warnings', '--impersonate', 'chrome', '--add-header', 'Accept-Language: en-US,en;q=0.9', '--extractor-args', 'youtube:player_client=' + playerClient, '--socket-timeout', '20'];
+  if (cookiesEnv.length > 0) { fs.writeFileSync(cookiesPath, cookiesEnv); dbgArgs.push('--cookies', cookiesPath); }
+  dbgArgs.push(url);
   let out = '', err = '';
-  const p = spawn(getYtDlpCmd(), args);
-  p.stdout.on('data', d => { out += d; });
+  const p2 = spawn(getYtDlpCmd(), dbgArgs);
+  p2.stdout.on('data', d => { out += d; });
+  p2.stderr.on('data', d => { err += d; });
+  p2.on('close', c => res.json({ code: c, hasCookies: cookiesEnv.length > 0, cookiesEnvLength: cookiesEnv.length, cookiesPreview: cookiesEnv.slice(0, 60), clientUsed: playerClient, stderr: err.slice(0, 500), stdout_len: out.length }));
+});
   p.stderr.on('data', d => { err += d; });
   p.on('close', code => res.json({ code, hasCookies, stderr: err.slice(0, 1000), stdout_len: out.length }));
 });
