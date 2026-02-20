@@ -215,11 +215,17 @@ app.post('/api/info', async (req, res) => {
 
 // Download to a temp file, then stream to client.
 // mp4 can't be piped to stdout (moov atom at end), so temp file is required.
+const os = require('os');
+
 function streamDownload(res, req, url, format_id, isAudio, title) {
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
-  const tmpFile = path.join('/tmp', `downfiles_${uuidv4()}.${ext}`);
+
+  // Use os.tmpdir() instead of hardcoded /tmp, and avoid extension conflicts
+  const tmpId = uuidv4();
+  // Tell yt-dlp to output exactly exactly this file
+  const tmpFile = path.join(os.tmpdir(), `downfiles_${tmpId}.${ext}`);
 
   const args = [
     '-f', formatArg,
@@ -248,7 +254,11 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   let errOutput = '';
   proc.stderr.on('data', d => {
     errOutput += d.toString();
-    process.stdout.write('[yt-dlp] ' + d.toString());
+    process.stdout.write('[yt-dlp log] ' + d.toString());
+  });
+  let stdOutput = '';
+  proc.stdout.on('data', d => {
+    stdOutput += d.toString();
   });
 
   proc.on('close', (code) => {
@@ -259,7 +269,23 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     }
 
     // Stream the temp file to client, then delete it
-    const sendFile = tmpFile; // yt-dlp may rename, check for exact file first
+    // Wait: what if yt-dlp renamed it? Let's check if it exists:
+    let sendFile = tmpFile;
+    if (!fs.existsSync(sendFile)) {
+      // Find what file yt-dlp actually created
+      const tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
+      if (tmpFiles.length > 0) {
+        sendFile = path.join(os.tmpdir(), tmpFiles[0]);
+      } else {
+        return res.status(500).json({
+          error: 'Downloaded file not found on server.',
+          tmpFileTried: tmpFile,
+          ytdlpStderr: errOutput,
+          ytdlpStdout: stdOutput
+        });
+      }
+    }
+
     const cleanup = (f) => { try { fs.unlinkSync(f); } catch { } };
 
     setDownloadFilename(res, title, ext);
@@ -269,7 +295,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     const stream = fs.createReadStream(sendFile);
     stream.on('error', (err) => {
       console.error('[DOWNLOAD] read error:', err.message);
-      if (!res.headersSent) res.status(500).send('Failed to read downloaded file');
+      if (!res.headersSent) res.status(500).json({ error: 'Failed to read downloaded file', msg: err.message, file: sendFile });
     });
     stream.on('end', () => cleanup(sendFile));
     stream.pipe(res);
