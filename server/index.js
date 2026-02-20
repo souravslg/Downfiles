@@ -131,16 +131,14 @@ app.post('/api/info', async (req, res) => {
   } catch { }
 
   console.log(`[INFO] Fetching: ${url}`);
-  console.log(`[INFO] Using: ${getYtDlpCmd()}`);
-
   const args = [
     '--dump-json',
     '--no-playlist',
     '--no-warnings',
-    '--impersonate', 'chrome',
+    '--impersonate', 'ios',
     '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=web',
+    '--extractor-args', 'youtube:player_client=ios',
     '--socket-timeout', '30',
     url
   ];
@@ -236,10 +234,10 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--no-playlist',
     '--socket-timeout', '60',
     '--no-warnings',
-    '--impersonate', 'chrome',
+    '--impersonate', 'ios',
     '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=web',
+    '--extractor-args', 'youtube:player_client=ios',
     '-o', tmpFile
   ];
 
