@@ -116,6 +116,30 @@ function setDownloadFilename(res, title, ext) {
     `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`);
 }
 
+// GET /api/yt-debug - shows raw yt-dlp output for debugging Railway blocks
+app.get('/api/yt-debug', (req, res) => {
+  const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
+  const args = [
+    '--dump-json', '--no-playlist', '--no-warnings',
+    '--impersonate', 'chrome',
+    '--add-header', 'Accept-Language: en-US,en;q=0.9',
+    '--extractor-args', 'youtube:player_client=android',
+    '--socket-timeout', '20', url
+  ];
+  const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
+  const hasCookies = !!process.env.YOUTUBE_COOKIES || require('fs').existsSync(cookiesPath);
+  if (process.env.YOUTUBE_COOKIES) {
+    const safe = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n');
+    require('fs').writeFileSync(cookiesPath, safe);
+    args.splice(-1, 0, '--cookies', cookiesPath);
+  }
+  let out = '', err = '';
+  const p = spawn(getYtDlpCmd(), args);
+  p.stdout.on('data', d => { out += d; });
+  p.stderr.on('data', d => { err += d; });
+  p.on('close', code => res.json({ code, hasCookies, stderr: err.slice(0, 1000), stdout_len: out.length }));
+});
+
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
   let { url } = req.body;
