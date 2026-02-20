@@ -97,7 +97,9 @@ function getCookiesArgs() {
 
 // Determine YouTube player client based on cookie availability
 function getYouTubeClient() {
-  return fs.existsSync(COOKIES_TMP_PATH) ? 'web' : 'android';
+  // tv_embedded: works on datacenter IPs, supports 1080p, doesn't need PO tokens
+  // android: bypasses IP blocks without cookies but caps at 360p
+  return fs.existsSync(COOKIES_TMP_PATH) ? 'tv_embedded' : 'android';
 }
 
 // Build a safe format string depending on ffmpeg availability
