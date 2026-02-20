@@ -1,5 +1,7 @@
 import { detectPlatform, formatSize, formatDuration, renderMarquee } from './platforms.js';
 
+// API base — empty = same origin (works locally and on Railway/any host)
+// The Express server serves both static files AND /api/* on the same domain
 const API_BASE = '';
 
 // DOM refs
