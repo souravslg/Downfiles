@@ -73,6 +73,32 @@ function getYtDlpCmd() {
   return YT_DLP_CMD;
 }
 
+// On startup: write cookies to temp path so every yt-dlp call can use them
+const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
+const COOKIES_REPO_PATH = path.join(__dirname, 'yt_cookies.txt');
+if (process.env.YOUTUBE_COOKIES) {
+  fs.writeFileSync(COOKIES_TMP_PATH, process.env.YOUTUBE_COOKIES);
+  console.log('✅ Cookies loaded from YOUTUBE_COOKIES env var');
+} else if (fs.existsSync(COOKIES_REPO_PATH)) {
+  fs.copyFileSync(COOKIES_REPO_PATH, COOKIES_TMP_PATH);
+  console.log('✅ Cookies loaded from server/yt_cookies.txt');
+} else {
+  console.log('⚠️  No cookies found — YouTube may throttle to 360p on Railway');
+}
+
+// Helper used by both /api/info and streamDownload
+function getCookiesArgs() {
+  if (fs.existsSync(COOKIES_TMP_PATH)) {
+    return ['--cookies', COOKIES_TMP_PATH];
+  }
+  return [];
+}
+
+// Determine YouTube player client based on cookie availability
+function getYouTubeClient() {
+  return fs.existsSync(COOKIES_TMP_PATH) ? 'web' : 'android';
+}
+
 // Build a safe format string depending on ffmpeg availability
 function buildFormatArg(format_id, isAudio) {
   if (isAudio) {
@@ -157,17 +183,10 @@ app.post('/api/info', async (req, res) => {
         '--add-header', 'Accept-Encoding: gzip, deflate, br',
         '--add-header', 'Accept-Language: en-US,en;q=0.9',
         '--extractor-args', `youtube:player_client=${playerClient}`,
-        '--socket-timeout', '30'
+        '--socket-timeout', '30',
+        ...getCookiesArgs(),
+        url
       ];
-      const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-      if (process.env.YOUTUBE_COOKIES) {
-        const safeCookies = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-        fs.writeFileSync(cookiesPath, safeCookies);
-        args.push('--cookies', cookiesPath);
-      } else if (fs.existsSync(cookiesPath)) {
-        args.push('--cookies', cookiesPath);
-      }
-      args.push(url);
       let stdout = '', stderr = '';
       const proc = spawn(getYtDlpCmd(), args);
       proc.stdout.on('data', d => { stdout += d.toString(); });
@@ -176,8 +195,8 @@ app.post('/api/info', async (req, res) => {
     });
   }
 
-  // With cookies: try web first (1080p+), fallback to android. Without: android first (bypasses IP block).
-  const clients = process.env.YOUTUBE_COOKIES ? ['web', 'android'] : ['android', 'web'];
+  // Use web client when cookies present (1080p+), android when not (IP bypass)
+  const clients = fs.existsSync(COOKIES_TMP_PATH) ? ['web', 'android'] : ['android', 'web'];
   let result;
   for (const client of clients) {
     result = await runYtDlp(client);
@@ -270,19 +289,11 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--impersonate', 'chrome',
     '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', `youtube:player_client=${process.env.YOUTUBE_COOKIES ? 'web' : 'android'}`,
+    '--extractor-args', `youtube:player_client=${getYouTubeClient()}`,
     '-o', tmpFile
   ];
 
-  if (process.env.YOUTUBE_COOKIES) {
-    const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-    const safeCookies = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-    fs.writeFileSync(cookiesPath, safeCookies);
-    args.push('--cookies', cookiesPath);
-  } else {
-    const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-    if (fs.existsSync(cookiesPath)) args.push('--cookies', cookiesPath);
-  }
+  args.push(...getCookiesArgs());
 
   if (isAudio) {
     args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
