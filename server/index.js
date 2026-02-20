@@ -88,11 +88,11 @@ function buildFormatArg(format_id, isAudio) {
   }
   // Auto mode
   if (HAS_FFMPEG) {
-    // Prefer mp4 container with merged streams
-    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best';
+    // Prefer mp4 container with merged streams, fallback to any best video+audio, then best single file
+    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best';
   }
-  // No ffmpeg — use pre-merged mp4 streams only (avoids webm)
-  return 'best[ext=mp4]/best[height<=720]/best';
+  // No ffmpeg — use pre-merged mp4 streams only (avoids webm), demand video codec
+  return 'best[ext=mp4][vcodec!=none]/best[height<=720][vcodec!=none]/best[vcodec!=none]/best';
 }
 
 // Safe filename sanitiser
