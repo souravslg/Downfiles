@@ -98,10 +98,22 @@ function buildFormatArg(format_id, isAudio) {
 // Safe filename sanitiser
 function safeFilename(title, ext) {
   const name = (title || 'downfiles')
-    .replace(/[\\/:*?"<>|]/g, '_')
-    .replace(/\s+/g, '_')
-    .slice(0, 80);
+    .replace(/[\\/:*?"<>|]/g, '_')  // Remove illegal filename chars
+    .replace(/\s+/g, '_')           // Spaces → underscores
+    .replace(/[^\x20-\x7E]/g, '')   // Strip non-ASCII (emoji, unicode scripts)
+    .replace(/_+/g, '_')            // Collapse multiple underscores
+    .replace(/^_|_$/g, '')          // Trim leading/trailing underscores
+    .slice(0, 80) || 'downfiles';   // Fallback if title was all non-ASCII
   return `${name}.${ext}`;
+}
+
+// Set Content-Disposition header safely (RFC 5987 for Unicode titles)
+function setDownloadFilename(res, title, ext) {
+  const ascii = safeFilename(title, ext);
+  // RFC 5987: filename*=UTF-8''<percent-encoded> for full Unicode support
+  const encoded = encodeURIComponent((title || 'downfiles').slice(0, 200)) + '.' + ext;
+  res.setHeader('Content-Disposition',
+    `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`);
 }
 
 // POST /api/info - Get video info
@@ -208,7 +220,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
   const filename = safeFilename(title, ext);
 
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  setDownloadFilename(res, title, ext);
   res.setHeader('Content-Type', contentType);
   res.setHeader('Cache-Control', 'no-store');
 
