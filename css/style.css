@@ -265,6 +265,11 @@ main {
 }
 
 .hero-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   font-size: clamp(3rem, 8vw, 5.5rem);
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -280,7 +285,6 @@ main {
   border-radius: 16px;
   padding: 0.1em 0.4em;
   color: #fff;
-  margin-top: 0.2rem;
 }
 
 .hero-sub {
