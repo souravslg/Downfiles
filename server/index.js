@@ -131,9 +131,6 @@ app.get('/api/yt-debug', (req, res) => {
   p2.stderr.on('data', d => { err += d; });
   p2.on('close', c => res.json({ code: c, hasCookies: cookiesEnv.length > 0, cookiesEnvLength: cookiesEnv.length, cookiesPreview: cookiesEnv.slice(0, 60), clientUsed: playerClient, stderr: err.slice(0, 500), stdout_len: out.length }));
 });
-  p.stderr.on('data', d => { err += d; });
-  p.on('close', code => res.json({ code, hasCookies, stderr: err.slice(0, 1000), stdout_len: out.length }));
-});
 
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
