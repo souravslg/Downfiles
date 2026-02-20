@@ -144,7 +144,8 @@ app.post('/api/info', async (req, res) => {
   // Handle cookies for datacenter IP bypass
   const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
   if (process.env.YOUTUBE_COOKIES) {
-    fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
+    const safeCookies = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    fs.writeFileSync(cookiesPath, safeCookies);
     args.push('--cookies', cookiesPath);
   } else if (fs.existsSync(cookiesPath)) {
     args.push('--cookies', cookiesPath);
@@ -254,7 +255,8 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
 
   if (process.env.YOUTUBE_COOKIES) {
     const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
-    fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
+    const safeCookies = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    fs.writeFileSync(cookiesPath, safeCookies);
     args.push('--cookies', cookiesPath);
   } else {
     const cookiesPath = path.join(os.tmpdir(), 'yt_cookies.txt');
