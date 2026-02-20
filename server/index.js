@@ -24,38 +24,46 @@ app.use(express.static(path.join(__dirname, '..')));
 // In-memory job store
 const jobs = {};
 
-// Find yt-dlp executable — Windows fallback
+// Find yt-dlp executable — tries yt-dlp → python -m yt_dlp → python3 -m yt_dlp
 const { execSync } = require('child_process');
 let YT_DLP_CMD = 'yt-dlp';
 try {
   execSync('yt-dlp --version', { stdio: 'ignore' });
+  console.log('yt-dlp found in PATH');
 } catch {
   try {
     execSync('python -m yt_dlp --version', { stdio: 'ignore' });
     YT_DLP_CMD = 'python -m yt_dlp';
+    console.log('yt-dlp found via python -m yt_dlp');
   } catch {
-    console.warn('WARNING: yt-dlp not found. Install it with: pip install yt-dlp');
+    try {
+      execSync('python3 -m yt_dlp --version', { stdio: 'ignore' });
+      YT_DLP_CMD = 'python3 -m yt_dlp';
+      console.log('yt-dlp found via python3 -m yt_dlp');
+    } catch {
+      console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+    }
   }
 }
 console.log(`Using yt-dlp command: ${YT_DLP_CMD}`);
 
 // Check for ffmpeg (needed to merge video+audio streams for 1080p+)
-const FFMPEG_LOCAL = path.join(__dirname, 'ffmpeg.exe');
 let HAS_FFMPEG = false;
 let FFMPEG_PATH = null;
 
-// Check local ./server/ffmpeg.exe first, then system PATH
 const fs = require('fs');
-if (fs.existsSync(FFMPEG_LOCAL)) {
+// On Windows: check local server/ffmpeg.exe; on Linux: rely on system PATH
+const FFMPEG_LOCAL_WIN = path.join(__dirname, 'ffmpeg.exe');
+if (process.platform === 'win32' && fs.existsSync(FFMPEG_LOCAL_WIN)) {
   HAS_FFMPEG = true;
-  FFMPEG_PATH = FFMPEG_LOCAL;
-  console.log(`ffmpeg found locally at ${FFMPEG_LOCAL} — 1080p+ HD downloads enabled ✅`);
+  FFMPEG_PATH = FFMPEG_LOCAL_WIN;
+  console.log(`ffmpeg found locally (Windows): ${FFMPEG_LOCAL_WIN} ✅`);
 } else {
   try {
     execSync('ffmpeg -version', { stdio: 'ignore' });
     HAS_FFMPEG = true;
     FFMPEG_PATH = 'ffmpeg';
-    console.log('ffmpeg found in system PATH — 1080p+ HD downloads enabled ✅');
+    console.log('ffmpeg found in system PATH ✅');
   } catch {
     console.warn('ffmpeg NOT found — downloads will use pre-merged streams (720p max).');
   }

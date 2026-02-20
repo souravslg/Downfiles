@@ -5,8 +5,13 @@ RUN apk add --no-cache python3 py3-pip ffmpeg
 
 WORKDIR /app
 
-# Install yt-dlp via pip
-RUN pip3 install yt-dlp --break-system-packages
+# Create python → python3 symlink (needed for yt-dlp detection)
+RUN ln -sf /usr/bin/python3 /usr/bin/python || true
+
+# Install yt-dlp and verify it works
+RUN pip3 install yt-dlp --break-system-packages && \
+    yt-dlp --version && \
+    echo "yt-dlp installed successfully"
 
 # Copy package files and install Node dependencies
 COPY package*.json ./
