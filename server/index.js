@@ -242,7 +242,11 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   }
 
   if (HAS_FFMPEG) {
-    args.push('--ffmpeg-location', FFMPEG_PATH);
+    // Only pass --ffmpeg-location if it's a specific custom path, otherwise yt-dlp finds it in PATH.
+    // Passing '--ffmpeg-location ffmpeg' breaks yt-dlp merging on Linux.
+    if (FFMPEG_PATH !== 'ffmpeg') {
+      args.push('--ffmpeg-location', FFMPEG_PATH);
+    }
     if (!isAudio) args.push('--merge-output-format', 'mp4');
   }
 
@@ -275,8 +279,13 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     let sendFile = tmpFile;
     if (!fs.existsSync(sendFile)) {
       // Find what file yt-dlp actually created
-      const tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
+      let tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
       if (tmpFiles.length > 0) {
+        // Prioritize actual video containers over audio streams in case of unmerged files
+        tmpFiles.sort((a, b) => {
+          const score = f => f.endsWith('.mp4') ? 1 : f.endsWith('.mkv') ? 2 : f.endsWith('.webm') ? 3 : 4;
+          return score(a) - score(b);
+        });
         sendFile = path.join(os.tmpdir(), tmpFiles[0]);
       } else {
         return res.status(500).json({
