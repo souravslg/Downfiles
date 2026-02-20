@@ -138,7 +138,7 @@ app.post('/api/info', async (req, res) => {
     '--impersonate', 'chrome',
     '--add-header', '"Accept-Encoding: gzip, deflate, br"',
     '--add-header', '"Accept-Language: en-US,en;q=0.9"',
-    '--extractor-args', '"youtube:player_client=tv"',
+    '--extractor-args', '"youtube:player_client=android"',
     '--socket-timeout', '30',
     url
   ];
@@ -240,7 +240,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--impersonate', 'chrome',
     '--add-header', '"Accept-Encoding: gzip, deflate, br"',
     '--add-header', '"Accept-Language: en-US,en;q=0.9"',
-    '--extractor-args', '"youtube:player_client=tv"',
+    '--extractor-args', '"youtube:player_client=android"',
     '-o', tmpFile
   ];
 
