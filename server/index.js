@@ -136,9 +136,9 @@ app.post('/api/info', async (req, res) => {
     '--no-playlist',
     '--no-warnings',
     '--impersonate', 'chrome',
-    '--add-header', '"Accept-Encoding: gzip, deflate, br"',
-    '--add-header', '"Accept-Language: en-US,en;q=0.9"',
-    '--extractor-args', '"youtube:player_client=android"',
+    '--add-header', 'Accept-Encoding: gzip, deflate, br',
+    '--add-header', 'Accept-Language: en-US,en;q=0.9',
+    '--extractor-args', 'youtube:player_client=android',
     '--socket-timeout', '30'
   ];
 
@@ -157,7 +157,7 @@ app.post('/api/info', async (req, res) => {
   let output = '';
   let errOutput = '';
 
-  const proc = spawn(getYtDlpCmd(), args, { shell: true });
+  const proc = spawn(getYtDlpCmd(), args);
 
   proc.stdout.on('data', (data) => { output += data.toString(); });
   proc.stderr.on('data', (data) => {
@@ -249,9 +249,9 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--socket-timeout', '60',
     '--no-warnings',
     '--impersonate', 'chrome',
-    '--add-header', '"Accept-Encoding: gzip, deflate, br"',
-    '--add-header', '"Accept-Language: en-US,en;q=0.9"',
-    '--extractor-args', '"youtube:player_client=android"',
+    '--add-header', 'Accept-Encoding: gzip, deflate, br',
+    '--add-header', 'Accept-Language: en-US,en;q=0.9',
+    '--extractor-args', 'youtube:player_client=android',
     '-o', tmpFile
   ];
 
@@ -284,7 +284,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   console.log(`  format: ${formatArg} | audio: ${isAudio} | ffmpeg: ${HAS_FFMPEG}`);
   console.log(`  tmp: ${tmpFile}`);
 
-  const proc = spawn(getYtDlpCmd(), args, { shell: true });
+  const proc = spawn(getYtDlpCmd(), args);
   let errOutput = '';
   proc.stderr.on('data', d => {
     errOutput += d.toString();
