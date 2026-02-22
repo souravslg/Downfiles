@@ -8,10 +8,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Install yt-dlp (pinned) - curl_cffi not needed since we don't use --impersonate
-RUN pip3 install "yt-dlp==2025.01.26" --break-system-packages && \
+# Install yt-dlp + curl_cffi for --impersonate support (bypasses YouTube bot detection)
+RUN pip3 install yt-dlp "curl_cffi==0.7.3" --break-system-packages && \
     yt-dlp --version && \
-    echo "yt-dlp 2025.01.26 installed"
+    python3 -c "import curl_cffi; print('curl_cffi OK:', curl_cffi.__version__)"
 
 # Copy package files and install Node dependencies
 COPY package*.json ./
