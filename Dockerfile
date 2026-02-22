@@ -8,10 +8,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Install yt-dlp (pinned to stable version) and curl_cffi (required for impersonation)
-RUN pip3 install "yt-dlp==2025.01.26" curl_cffi --break-system-packages && \
+# Install yt-dlp (pinned) - curl_cffi not needed since we don't use --impersonate
+RUN pip3 install "yt-dlp==2025.01.26" --break-system-packages && \
     yt-dlp --version && \
-    echo "yt-dlp installed successfully"
+    echo "yt-dlp 2025.01.26 installed"
 
 # Copy package files and install Node dependencies
 COPY package*.json ./
