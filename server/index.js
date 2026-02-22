@@ -24,15 +24,16 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '..')));
 
 // Set up cookies for yt-dlp to bypass YouTube anti-bot/age-restrictions
-const COOKIES_TMP_PATH = path.join(__dirname, 'cookies.txt');
+// Use /tmp so it's always writable on any Linux container (Railway, Render, Fly, etc.)
+const os = require('os');
+const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
 if (process.env.YOUTUBE_COOKIES) {
   try {
-    // Decode base64 env var and write to cookies.txt
     const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
-    fs.writeFileSync(COOKIES_TMP_PATH, cookieString);
-    console.log('[INFO] Loaded YouTube cookies from environment variable ✅');
+    fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
+    console.log('[INFO] Loaded YouTube cookies from environment variable ✅ path:', COOKIES_TMP_PATH);
   } catch (err) {
-    console.error('[ERROR] Failed to parse YOUTUBE_COOKIES env var:', err.message);
+    console.error('[ERROR] Failed to write YOUTUBE_COOKIES:', err.message);
   }
 }
 
@@ -41,6 +42,12 @@ function getCookiesArgs() {
     return ['--cookies', COOKIES_TMP_PATH];
   }
   return [];
+}
+
+// Use 'web' client when cookies are present (full format access)
+// Use 'ios' when no cookies (bypasses some age restrictions without auth)
+function getYouTubeClient() {
+  return fs.existsSync(COOKIES_TMP_PATH) ? 'web' : 'ios';
 }
 
 // In-memory job store
@@ -188,12 +195,11 @@ app.post('/api/info', async (req, res) => {
 
   console.log(`[INFO] Fetching: ${url}`);
 
+  const ytClient = getYouTubeClient();
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
-    '--impersonate', 'safari',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=default,ios',
+    '--extractor-args', `youtube:player_client=${ytClient}`,
     '--socket-timeout', '30',
     ...getCookiesArgs(),
     url
@@ -284,12 +290,11 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   const tmpId = uuidv4();
   const tmpFile = require('path').join(require('os').tmpdir(), `downfiles_${tmpId}.${ext}`);
 
+  const ytClient = getYouTubeClient();
   const args = [
     '-f', formatArg,
     '--no-playlist',
-    '--extractor-args', 'youtube:player_client=default,ios',
-    '--impersonate', 'safari',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
+    '--extractor-args', `youtube:player_client=${ytClient}`,
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--socket-timeout', '60',
     '--no-warnings',
