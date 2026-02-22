@@ -1,8 +1,9 @@
 FROM node:20
 
-# Install Python, pip, and ffmpeg (with full SSL libs for curl_cffi impersonation)
+# Install Python, pip, ffmpeg and SSL libs for curl_cffi impersonation support
+# NOTE: libssl-dev and ca-certificates are required for curl_cffi TLS fingerprinting
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip ffmpeg curl libssl-dev ca-certificates && \
+    apt-get install -y python3 python3-pip ffmpeg curl wget libssl-dev ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
