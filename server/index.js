@@ -44,11 +44,6 @@ function getCookiesArgs() {
   return [];
 }
 
-// Use 'web' client when cookies are present (full format access)
-// Use 'ios' when no cookies (bypasses some age restrictions without auth)
-function getYouTubeClient() {
-  return fs.existsSync(COOKIES_TMP_PATH) ? 'web' : 'ios';
-}
 
 // In-memory job store
 const jobs = {};
@@ -194,12 +189,13 @@ app.post('/api/info', async (req, res) => {
   } catch { }
 
   console.log(`[INFO] Fetching: ${url}`);
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+  console.log(`[INFO] Cookies loaded: ${hasCookies}`);
 
-  const ytClient = getYouTubeClient();
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', `youtube:player_client=${ytClient}`,
+    '--extractor-args', 'youtube:player_client=default,ios',
     '--socket-timeout', '30',
     ...getCookiesArgs(),
     url
@@ -290,11 +286,10 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   const tmpId = uuidv4();
   const tmpFile = require('path').join(require('os').tmpdir(), `downfiles_${tmpId}.${ext}`);
 
-  const ytClient = getYouTubeClient();
   const args = [
     '-f', formatArg,
     '--no-playlist',
-    '--extractor-args', `youtube:player_client=${ytClient}`,
+    '--extractor-args', 'youtube:player_client=default,ios',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--socket-timeout', '60',
     '--no-warnings',
