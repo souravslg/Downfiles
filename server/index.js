@@ -73,7 +73,6 @@ console.log(`Using yt-dlp command: ${YT_DLP_CMD}`);
 let HAS_FFMPEG = false;
 let FFMPEG_PATH = null;
 
-const fs = require('fs');
 // On Windows: check local server/ffmpeg.exe; on Linux: rely on system PATH
 const FFMPEG_LOCAL_WIN = path.join(__dirname, 'ffmpeg.exe');
 if (process.platform === 'win32' && fs.existsSync(FFMPEG_LOCAL_WIN)) {
