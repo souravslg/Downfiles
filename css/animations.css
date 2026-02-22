@@ -58,6 +58,16 @@
     }
 }
 
+@keyframes marqueeReverse {
+    0% {
+        transform: translateX(-50%);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
 @keyframes pulse {
 
     0%,

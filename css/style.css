@@ -1,13 +1,13 @@
 /* ===== CSS Variables ===== */
 :root {
-  --bg: #0a0a0a;
-  --bg-card: #111111;
-  --bg-card2: #161616;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.18);
-  --text: #f0f0f0;
-  --text-muted: #777;
-  --text-dim: #999;
+  --bg: #07071a;
+  --bg-card: #0e0e2a;
+  --bg-card2: #13133a;
+  --border: rgba(139, 92, 246, 0.15);
+  --border-hover: rgba(139, 92, 246, 0.35);
+  --text: #e8e8ff;
+  --text-muted: #8080b0;
+  --text-dim: #9090c0;
   --accent: #7c3aed;
   --accent2: #4f46e5;
   --green: #22c55e;
@@ -47,15 +47,58 @@ html {
   }
 }
 
+@keyframes floatOrbs {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-30px) scale(1.05);
+  }
+}
+
 body {
   font-family: var(--font);
-  background: linear-gradient(-45deg, #09090e, #110d1a, #0b1120, #0a0a0a);
+  background: linear-gradient(-45deg, #07071a, #0d0d2b, #110826, #090918, #0d0921);
   background-size: 400% 400%;
-  animation: slowGradient 15s ease infinite;
+  animation: slowGradient 12s ease infinite;
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* Animated glowing orbs in background */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 0;
+  animation: floatOrbs 8s ease-in-out infinite;
+}
+
+body::before {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, #7c3aed, #4f46e5);
+  top: -120px;
+  left: -120px;
+}
+
+body::after {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, #312e81, #6d28d9);
+  bottom: -100px;
+  right: -80px;
+  animation-delay: -5s;
 }
 
 a {
@@ -85,8 +128,8 @@ button {
   pointer-events: none;
   z-index: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(139, 92, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 92, 246, 0.05) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
@@ -108,22 +151,41 @@ button {
   padding: 0 2rem;
   height: 64px;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 10, 10, 0.85);
+  background: rgba(7, 7, 26, 0.85);
   backdrop-filter: blur(20px);
 }
 
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  gap: 0.6rem;
+  text-decoration: none;
 }
 
 .navbar-logo svg {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.logo-text-wrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.logo-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f0f0f0;
+}
+
+.logo-sub {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #a78bfa;
+  letter-spacing: 0.03em;
 }
 
 .navbar-links {
@@ -292,7 +354,7 @@ main {
   line-height: 1.15;
   margin-bottom: 1rem;
   animation: fadeInUp 0.5s ease 0.1s both;
-  color: #555;
+  color: #e8e8ff;
   white-space: nowrap;
 }
 
@@ -372,11 +434,12 @@ main {
 }
 
 .input-card {
-  background: #0d0d0d;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0e0e2a;
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: 24px;
   padding: 1.5rem 1.5rem 2rem;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: none;
   transition: border-color 0.3s;
 }
 
@@ -389,7 +452,7 @@ main {
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #666;
+  color: #8080b0;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   margin-bottom: 1rem;
@@ -399,8 +462,8 @@ main {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #13133a;
+  border: 1px solid rgba(139, 92, 246, 0.12);
   border-radius: var(--radius-pill);
   padding: 0.5rem 0.5rem 0.5rem 1.5rem;
   transition: border-color 0.2s;
@@ -713,26 +776,122 @@ main {
 
 /* ===== Platforms Marquee ===== */
 .platforms-section {
-  padding: 3rem 0;
-  overflow: hidden;
+  padding: 3.5rem 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   margin: 4rem 0;
+  text-align: center;
 }
 
 .platforms-section h2 {
-  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2rem;
+  padding: 0 1.5rem;
+}
+
+.platforms-icons-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.platforms-icon-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.platforms-icon-row img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.platforms-icon-row img:hover {
+  transform: scale(1.25);
+  opacity: 1;
+}
+
+.platforms-more-text {
+  margin-top: 2rem;
   font-size: 0.8rem;
-  font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 1.5rem;
+  letter-spacing: 0.03em;
+}
+
+.platforms-icons-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.platforms-icon-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.platforms-icon-row img,
+.platforms-icon-track img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.platforms-icon-row img:hover,
+.platforms-icon-track img:hover {
+  transform: scale(1.25);
+  opacity: 1;
+}
+
+.platforms-more-text {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  padding: 0 1.5rem;
+}
+
+/* Scrolling icon tracks */
+.platforms-icon-track {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 1.75rem;
+  width: max-content;
+  animation: marqueeScroll 22s linear infinite;
+  margin-bottom: 0.75rem;
+}
+
+.platforms-icon-track-reverse {
+  animation: marqueeReverse 26s linear infinite;
+}
+
+.platforms-icon-track:hover,
+.platforms-icon-track-reverse:hover {
+  animation-play-state: paused;
 }
 
 .marquee-wrapper {
   position: relative;
   overflow: hidden;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .marquee-wrapper::before,
@@ -757,12 +916,23 @@ main {
 
 .marquee-track {
   display: flex;
+  flex-wrap: nowrap;
   gap: 1.5rem;
   width: max-content;
   animation: marqueeScroll 30s linear infinite;
 }
 
-.marquee-track:hover {
+.marquee-track-reverse {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1.5rem;
+  width: max-content;
+  animation: marqueeReverse 28s linear infinite;
+  margin-top: 0.75rem;
+}
+
+.marquee-track:hover,
+.marquee-track-reverse:hover {
   animation-play-state: paused;
 }
 

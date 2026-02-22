@@ -69,8 +69,13 @@ if (process.platform === 'win32' && fs.existsSync(FFMPEG_LOCAL_WIN)) {
   }
 }
 
-function getYtDlpCmd() {
-  return YT_DLP_CMD;
+function spawnYtDlp(args, options = {}) {
+  // YT_DLP_CMD may be a multi-word string like 'python -m yt_dlp'.
+  // spawn() does NOT use a shell by default, so we must split it ourselves.
+  const parts = YT_DLP_CMD.split(' ');
+  const cmd = parts[0];            // e.g. 'python'
+  const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
+  return spawn(cmd, [...pre, ...args], options);
 }
 
 // Build a safe format string depending on ffmpeg availability
@@ -131,7 +136,7 @@ app.get('/api/yt-debug', (req, res) => {
     url
   ];
   let out = '', err = '';
-  const p2 = spawn(getYtDlpCmd(), dbgArgs);
+  const p2 = spawnYtDlp(dbgArgs);
   p2.stdout.on('data', d => { out += d; });
   p2.stderr.on('data', d => { err += d; });
   p2.on('close', c => res.json({
@@ -161,16 +166,12 @@ app.post('/api/info', async (req, res) => {
 
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
-    '--impersonate', 'chrome',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
-    '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=android',
     '--socket-timeout', '30',
     url
   ];
 
   let output = '', errOutput = '';
-  const proc = spawn(getYtDlpCmd(), args);
+  const proc = spawnYtDlp(args);
   proc.stdout.on('data', d => { output += d.toString(); });
   proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
   proc.on('close', (code) => {
@@ -247,10 +248,6 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--no-playlist',
     '--socket-timeout', '60',
     '--no-warnings',
-    '--impersonate', 'chrome',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
-    '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=android',
     '-o', tmpFile
   ];
 
@@ -273,7 +270,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   console.log(`  format: ${formatArg} | audio: ${isAudio} | ffmpeg: ${HAS_FFMPEG}`);
   console.log(`  tmp: ${tmpFile}`);
 
-  const proc = spawn(getYtDlpCmd(), args);
+  const proc = spawnYtDlp(args);
   let errOutput = '';
   proc.stderr.on('data', d => {
     errOutput += d.toString();
@@ -381,7 +378,7 @@ app.get('/api/stream/:jobId', (req, res) => {
   res.setHeader('Content-Type', audio_only ? 'audio/mpeg' : 'video/mp4');
 
   const args = ['-f', formatArg, '--no-playlist', '-o', '-', url];
-  const proc = spawn(getYtDlpCmd(), args, { shell: true });
+  const proc = spawnYtDlp(['-f', formatArg, '--no-playlist', '-o', '-', url]);
   proc.stdout.pipe(res);
   req.on('close', () => proc.kill());
 });

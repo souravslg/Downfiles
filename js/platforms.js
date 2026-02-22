@@ -66,11 +66,22 @@ function formatDuration(seconds) {
  */
 function renderMarquee() {
     const track = document.querySelector('.marquee-track');
-    if (!track) return;
-    const doubled = [...PLATFORMS, ...PLATFORMS];
-    track.innerHTML = doubled.map(p =>
-        `<div class="platform-chip"><span class="icon">${p.icon}</span><span>${p.name}</span></div>`
-    ).join('');
+    const trackReverse = document.querySelector('.marquee-track-reverse');
+
+    const chipHTML = p =>
+        `<div class="platform-chip"><span class="icon">${p.icon}</span><span>${p.name}</span></div>`;
+
+    if (track) {
+        const doubled = [...PLATFORMS, ...PLATFORMS];
+        track.innerHTML = doubled.map(chipHTML).join('');
+    }
+
+    if (trackReverse) {
+        // offset by half so the two rows show different platforms at start
+        const offset = [...PLATFORMS.slice(12), ...PLATFORMS.slice(0, 12)];
+        const doubled = [...offset, ...offset];
+        trackReverse.innerHTML = doubled.map(chipHTML).join('');
+    }
 }
 
 /**
