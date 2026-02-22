@@ -71,33 +71,18 @@ try {
 }
 console.log(`Using yt-dlp command: ${YT_DLP_CMD}`);
 
-// Detect if curl_cffi impersonation is available (needed for Facebook/Instagram etc.)
-let HAS_IMPERSONATION = false;
-try {
-  const targets = execSync(`${YT_DLP_CMD} --list-impersonate-targets 2>&1`, { timeout: 8000 }).toString();
-  HAS_IMPERSONATION = targets.includes('curl_cffi');
-  if (HAS_IMPERSONATION) console.log('[INFO] curl_cffi impersonation available \u2705');
-  else console.log('[INFO] curl_cffi impersonation NOT available \u2014 Facebook/Instagram may fail');
-} catch (e) {
-  console.log('[INFO] curl_cffi check failed:', e.message);
-}
 
-// Only use impersonation for non-YouTube URLs — android client handles YouTube
-// and mixing safari TLS with android API headers causes YouTube to reject requests
+// Add browser User-Agent for social platforms (Facebook, Instagram etc. block non-browser requests)
 function getImpersonationArgs(url) {
   if (!url) return [];
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
   if (isYouTube) return [];
-  // For Facebook, Instagram, Twitter etc — use Safari TLS impersonation if available
-  // Fall back to realistic browser User-Agent so Facebook doesn't block the request
-  if (HAS_IMPERSONATION) {
-    return ['--impersonate', 'chrome', '--add-header', 'Accept-Encoding: gzip, deflate, br'];
-  }
   const isSocial = url.includes('facebook.com') || url.includes('fb.com') ||
     url.includes('instagram.com') || url.includes('twitter.com') ||
     url.includes('tiktok.com');
   if (isSocial) {
-    return ['--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'];
+    return ['--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+      '--add-header', 'Accept-Encoding: gzip, deflate, br'];
   }
   return [];
 }
