@@ -85,9 +85,21 @@ try {
 // Only use impersonation for non-YouTube URLs — android client handles YouTube
 // and mixing safari TLS with android API headers causes YouTube to reject requests
 function getImpersonationArgs(url) {
-  if (!HAS_IMPERSONATION) return [];
-  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) return [];
-  return ['--impersonate', 'safari', '--add-header', 'Accept-Encoding: gzip, deflate, br'];
+  if (!url) return [];
+  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+  if (isYouTube) return [];
+  // For Facebook, Instagram, Twitter etc — use Safari TLS impersonation if available
+  // Fall back to realistic browser User-Agent so Facebook doesn't block the request
+  if (HAS_IMPERSONATION) {
+    return ['--impersonate', 'safari', '--add-header', 'Accept-Encoding: gzip, deflate, br'];
+  }
+  const isSocial = url.includes('facebook.com') || url.includes('fb.com') ||
+    url.includes('instagram.com') || url.includes('twitter.com') ||
+    url.includes('tiktok.com');
+  if (isSocial) {
+    return ['--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'];
+  }
+  return [];
 }
 
 // Check for ffmpeg (needed to merge video+audio streams for 1080p+)
@@ -211,8 +223,12 @@ app.post('/api/info', async (req, res) => {
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
   console.log(`[INFO] Cookies loaded: ${hasCookies}`);
 
+  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+
   const args = [
-    '--dump-json', '--no-playlist', '--no-warnings',
+    '--dump-json',
+    ...(isYouTube ? ['--no-playlist'] : []),
+    '--no-warnings',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--extractor-args', 'youtube:player_client=android',
