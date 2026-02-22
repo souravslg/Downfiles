@@ -8,8 +8,8 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Install yt-dlp and curl_cffi (required for --impersonate bypass)
-RUN pip3 install yt-dlp curl_cffi --break-system-packages && \
+# Install yt-dlp (pinned to stable version) and curl_cffi (required for impersonation)
+RUN pip3 install "yt-dlp==2025.01.26" curl_cffi --break-system-packages && \
     yt-dlp --version && \
     echo "yt-dlp installed successfully"
 
