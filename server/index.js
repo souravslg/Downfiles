@@ -194,10 +194,8 @@ app.post('/api/info', async (req, res) => {
 
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
-    '--impersonate', 'chrome120',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=default,ios',
+    '--extractor-args', 'youtube:player_client=android',
     '--socket-timeout', '30',
     ...getCookiesArgs(),
     url
@@ -291,10 +289,8 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   const args = [
     '-f', formatArg,
     '--no-playlist',
-    '--impersonate', 'chrome120',
-    '--add-header', 'Accept-Encoding: gzip, deflate, br',
+    '--extractor-args', 'youtube:player_client=android',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=default,ios',
     '--socket-timeout', '60',
     '--no-warnings',
     ...getCookiesArgs(),
