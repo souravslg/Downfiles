@@ -31,6 +31,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 @keyframes slowGradient {
@@ -355,7 +356,7 @@ main {
   margin-bottom: 1rem;
   animation: fadeInUp 0.5s ease 0.1s both;
   color: #e8e8ff;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .hero-title .gradient-badge {
@@ -1725,6 +1726,10 @@ footer {
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
+  .marquee-wrapper {
+    display: none;
+  }
+
   .navbar {
     padding: 0 1rem;
   }
