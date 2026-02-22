@@ -91,7 +91,7 @@ function getImpersonationArgs(url) {
   // For Facebook, Instagram, Twitter etc — use Safari TLS impersonation if available
   // Fall back to realistic browser User-Agent so Facebook doesn't block the request
   if (HAS_IMPERSONATION) {
-    return ['--impersonate', 'safari', '--add-header', 'Accept-Encoding: gzip, deflate, br'];
+    return ['--impersonate', 'chrome', '--add-header', 'Accept-Encoding: gzip, deflate, br'];
   }
   const isSocial = url.includes('facebook.com') || url.includes('fb.com') ||
     url.includes('instagram.com') || url.includes('twitter.com') ||
