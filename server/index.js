@@ -106,11 +106,12 @@ function buildFormatArg(format_id, isAudio) {
     return 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio';
   }
   if (format_id && format_id !== 'auto') {
-    // Specific format selected by user
+    // Specific format selected by user — always add generous fallbacks in case
+    // the exact format_id is unavailable on this server's IP/client combination
     if (HAS_FFMPEG) {
-      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}`;
+      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best`;
     }
-    return format_id;
+    return `${format_id}/best[ext=mp4][vcodec!=none]/best[vcodec!=none]/best`;
   }
   // Auto mode
   if (HAS_FFMPEG) {
@@ -177,8 +178,10 @@ app.post('/api/info', async (req, res) => {
   // Strip YouTube playlist/mix params — only keep the video ID
   try {
     const u = new URL(url);
-    if (u.hostname.includes('youtube.com')) {
-      const v = u.searchParams.get('v');
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      const v = u.hostname.includes('youtu.be')
+        ? u.pathname.replace('/', '')
+        : u.searchParams.get('v');
       if (v) url = `https://www.youtube.com/watch?v=${v}`;
     }
   } catch { }
