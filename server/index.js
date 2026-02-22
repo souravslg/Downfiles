@@ -76,10 +76,18 @@ let HAS_IMPERSONATION = false;
 try {
   const targets = execSync(`${YT_DLP_CMD} --list-impersonate-targets 2>&1`, { timeout: 8000 }).toString();
   HAS_IMPERSONATION = targets.includes('curl_cffi');
-  if (HAS_IMPERSONATION) console.log('[INFO] curl_cffi impersonation available ✅');
-  else console.log('[INFO] curl_cffi impersonation NOT available — Facebook/Instagram may fail');
+  if (HAS_IMPERSONATION) console.log('[INFO] curl_cffi impersonation available \u2705');
+  else console.log('[INFO] curl_cffi impersonation NOT available \u2014 Facebook/Instagram may fail');
 } catch (e) {
   console.log('[INFO] curl_cffi check failed:', e.message);
+}
+
+// Only use impersonation for non-YouTube URLs — android client handles YouTube
+// and mixing safari TLS with android API headers causes YouTube to reject requests
+function getImpersonationArgs(url) {
+  if (!HAS_IMPERSONATION) return [];
+  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) return [];
+  return ['--impersonate', 'safari', '--add-header', 'Accept-Encoding: gzip, deflate, br'];
 }
 
 // Check for ffmpeg (needed to merge video+audio streams for 1080p+)
@@ -205,7 +213,7 @@ app.post('/api/info', async (req, res) => {
 
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
-    ...(HAS_IMPERSONATION ? ['--impersonate', 'safari', '--add-header', 'Accept-Encoding: gzip, deflate, br'] : []),
+    ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--extractor-args', 'youtube:player_client=android',
     '--socket-timeout', '30',
@@ -301,7 +309,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   const args = [
     '-f', formatArg,
     '--no-playlist',
-    ...(HAS_IMPERSONATION ? ['--impersonate', 'safari', '--add-header', 'Accept-Encoding: gzip, deflate, br'] : []),
+    ...getImpersonationArgs(url),
     '--extractor-args', 'youtube:player_client=android',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--socket-timeout', '60',
