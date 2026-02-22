@@ -1,15 +1,15 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DownFiles – Fast & Free Video Downloader | No Watermark</title>
+  <title>All In One Downloader – Fast & Free Video Downloader | No Watermark</title>
   <meta name="description"
     content="Download videos, shorts, reels, and playlists from YouTube, TikTok, Instagram, Facebook, and 50+ platforms. Fast, free, no watermark.">
   <meta name="keywords"
     content="video downloader, youtube downloader, tiktok downloader, instagram downloader, no watermark">
-  <meta property="og:title" content="DownFiles – Fast & Free Video Downloader">
+  <meta property="og:title" content="All In One Downloader – Fast & Free Video Downloader">
   <meta property="og:description"
     content="Download from YouTube, TikTok, Instagram and 50+ platforms. No sign-up, no watermark, HQ downloads.">
   <meta property="og:type" content="website">
@@ -42,42 +42,53 @@
         </defs>
       </svg>
       <span class="logo-text-wrap">
-        <span class="logo-name">DOWNFILES</span>
+        <span class="logo-name">All In One Downloader</span>
         <span class="logo-sub">By Sourav</span>
       </span>
     </a>
 
-    <div class="navbar-links">
-      <a href="track.html" class="nav-link">Track Download</a>
-      <div class="platforms-dropdown">
-        <button class="dropdown-btn">
-          Platforms
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M6 9l6 6 6-6" />
+    <div class="navbar-actions">
+      <!-- Desktop menu dropdown -->
+      <div class="desktop-menu" id="desktop-menu">
+        <button class="desktop-menu-btn" id="desktop-menu-btn" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
+          <span>Menu</span>
         </button>
-        <div class="dropdown-menu">
-          <a href="platforms/youtube.html">▶️ YouTube</a>
-          <a href="platforms/tiktok.html">🎵 TikTok</a>
-          <a href="platforms/instagram.html">📸 Instagram</a>
-          <a href="platforms/twitter.html">🐦 Twitter / X</a>
-          <a href="platforms/facebook.html">👤 Facebook</a>
-          <a href="platforms/vimeo.html">🎬 Vimeo</a>
-          <a href="platforms.html"
-            style="border-top:1px solid rgba(255,255,255,0.06);margin-top:0.25rem;padding-top:0.6rem;color:#a78bfa">View
-            all platforms →</a>
+        <div class="desktop-menu-dropdown" id="desktop-menu-dropdown">
+          <a href="platforms/youtube.html" class="desktop-menu-item">▶️ YouTube</a>
+          <a href="platforms/tiktok.html" class="desktop-menu-item">🎵 TikTok</a>
+          <a href="platforms/instagram.html" class="desktop-menu-item">📸 Instagram</a>
+          <a href="platforms/twitter.html" class="desktop-menu-item">🐦 Twitter / X</a>
+          <a href="platforms/facebook.html" class="desktop-menu-item">👤 Facebook</a>
+          <a href="platforms/vimeo.html" class="desktop-menu-item">🎬 Vimeo</a>
+          <a href="platforms.html" class="desktop-menu-item" style="color:#a78bfa; margin-top: 0.25rem;">View all
+            platforms →</a>
         </div>
       </div>
-      <a href="guide.html" class="nav-link">Guide</a>
-      <a href="faq.html" class="nav-link">FAQ</a>
-    </div>
 
-    <div class="navbar-actions">
+      <!-- Mobile hamburger (mobile only) -->
       <button class="mobile-menu-btn" aria-label="Menu">
         <span></span><span></span><span></span>
       </button>
     </div>
   </nav>
+
+  <!-- ===== MOBILE NAV DRAWER ===== -->
+  <div class="mobile-nav" id="mobile-nav" aria-hidden="true">
+    <a href="platforms/youtube.html" class="mobile-nav-link">▶️ YouTube</a>
+    <a href="platforms/tiktok.html" class="mobile-nav-link">🎵 TikTok</a>
+    <a href="platforms/instagram.html" class="mobile-nav-link">📸 Instagram</a>
+    <a href="platforms/twitter.html" class="mobile-nav-link">🐦 Twitter / X</a>
+    <a href="platforms/facebook.html" class="mobile-nav-link">👤 Facebook</a>
+    <a href="platforms/vimeo.html" class="mobile-nav-link">🎬 Vimeo</a>
+    <a href="platforms.html" class="mobile-nav-link" style="color:#a78bfa; margin-top: 0.25rem;">View all platforms
+      →</a>
+  </div>
 
   <!-- ===== MAIN ===== -->
   <main>
@@ -89,24 +100,17 @@
       </div>
 
       <h1 class="hero-title">
-        <span class="plain">Paste Link.</span>
-        <span class="gradient-badge">Get Content</span>
+        <span class="plain"><span id="typing-text">All In One</span><span class="typing-cursor">|</span></span>
+        <span class="gradient-badge">Downloader</span>
       </h1>
 
       <p class="hero-sub">
-        Drop any link, from almost any platform — <strong>DOWNFILES</strong> takes care of everything
+        Drop any link, from almost any platform — <strong>All In One Downloader</strong> takes care of everything
       </p>
 
-      <div class="hero-pills">
-        <span class="hero-pill"><span class="check">✅</span> No sign-up</span>
-        <span class="hero-pill"><span class="check">✅</span> No Watermark</span>
-        <span class="hero-pill"><span class="check">✅</span> HQ downloads</span>
-        <span class="hero-pill"><span class="check">✅</span> No Ads</span>
-      </div>
 
-      <div class="coming-soon-pill">
-        <span class="dot"></span>🎵 Spotify Downloader Coming Soon
-      </div>
+
+
 
       <!-- URL Input Card -->
       <div class="input-container">
@@ -266,7 +270,7 @@
     <!-- Features -->
     <section class="features-section">
       <div style="text-align:center;max-width:700px;margin:0 auto">
-        <h2 class="section-title">Why DownFiles?</h2>
+        <h2 class="section-title">Why All In One Downloader?</h2>
         <p class="section-sub">Everything you need, nothing you don't</p>
       </div>
       <div class="features-grid">
@@ -301,7 +305,8 @@
         <div class="feature-card hover-lift">
           <span class="feature-icon">🎯</span>
           <div class="feature-title">Auto Mode</div>
-          <div class="feature-desc">Let DownFiles automatically select the best available quality and format for your
+          <div class="feature-desc">Let All In One Downloader automatically select the best available quality and format
+            for your
             device.</div>
           <span class="feature-badge">Smart Selection</span>
         </div>
@@ -315,135 +320,7 @@
       </div>
     </section>
 
-    <!-- FAQ -->
-    <section class="faq-wrap">
-
-      <div class="faq-left-card">
-        <div class="faq-left-corner-tr"></div>
-        <div class="faq-left-corner-bl"></div>
-
-        <div class="faq-icon-box">
-          <svg fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-          </svg>
-        </div>
-
-        <h2 class="faq-left-title">
-          Frequently Asked
-          <span class="gradient-text">Questions</span>
-        </h2>
-
-        <p class="faq-left-desc">
-          Quick answers to common questions. Need more help? Visit our full FAQ page.
-        </p>
-
-        <a href="faq.html" class="btn-outline">
-          View All FAQs
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </a>
-      </div>
-
-      <div class="faq-list">
-        <div class="faq-item">
-          <button class="faq-q">
-            Is DownFiles free to use?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">Yes! DownFiles is completely free. There are no hidden fees, no premium plans, and no
-            registration required. Just paste your link and download.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            Which platforms are supported?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">DownFiles supports 50+ platforms including YouTube, TikTok, Instagram, Facebook, Twitter/X,
-            Vimeo, Dailymotion, Reddit, Pinterest, Snapchat, SoundCloud, Twitch, and many more. <a href="platforms.html"
-              style="color:#a78bfa">See all supported platforms →</a></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            Can I download without watermarks?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">Yes! DownFiles automatically removes watermarks from TikTok and Instagram videos, giving
-            you a clean, watermark-free download every time.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            What video qualities are available?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">DownFiles supports all available qualities for each video, from 144p up to 8K. Available
-            options depend on what the source platform provides. Use "Choose Quality" to select your preferred
-            resolution, or "Auto" for the best available.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            Can I download audio only (MP3)?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">Absolutely! Click the "Audio Only (MP3)" button after fetching a video to extract and
-            download just the audio track as an MP3 file.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            Can I download entire playlists?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">Yes! Paste a YouTube playlist URL and DownFiles will detect it. Note: very large playlists
-            may take a while to process. We recommend downloading in batches for the best experience.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            Is it legal to download videos?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">DownFiles is a tool. Whether downloading a specific video is legal depends on the content,
-            the platform's terms of service, and your jurisdiction. Only download content you have permission to
-            download, or content that is in the public domain. DownFiles is not responsible for misuse.</div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q">
-            Do you store my downloads?
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <div class="faq-a">No. Files are streamed directly from the source to your browser. We do not store, cache, or
-            retain any downloaded content on our servers.</div>
-        </div>
-      </div>
-    </section>
   </main>
-
   <!-- ===== FOOTER ===== -->
   <footer>
     <div class="footer-inner">
@@ -461,7 +338,7 @@
               </linearGradient>
             </defs>
           </svg>
-          DOWNFILES
+          All In One Downloader
         </div>
         <p class="footer-desc">The all-in-one downloader for creators. Works across YouTube, TikTok, Instagram, and 50+
           platforms.</p>
@@ -486,7 +363,7 @@
           <li><a href="guide.html">User Guide</a></li>
           <li><a href="faq.html">FAQ</a></li>
           <li><a href="platforms.html">All Platforms</a></li>
-          <li><a href="track.html">Track Download</a></li>
+
         </ul>
       </div>
 
@@ -504,7 +381,7 @@
 
     <div class="footer-bottom">
       <div style="display:flex;flex-direction:column;gap:0.15rem;">
-        <span>© 2026 DownFiles. All rights reserved. • v1.0.0</span>
+        <span>© 2026 All In One Downloader. All rights reserved. • v1.0.0</span>
         <span style="font-size:0.72rem;color:#555;letter-spacing:0.03em;">Created By Sourav</span>
       </div>
       <div class="footer-bottom-links">

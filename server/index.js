@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -459,5 +459,5 @@ app.get('/api/status/:jobId', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 DownFiles server running at http://localhost:${PORT}\n`);
+  console.log(`\n🚀 All In One Downloader server running at http://localhost:${PORT}\n`);
 });
