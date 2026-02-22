@@ -4,6 +4,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 
+const fs = require('fs');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,6 +22,26 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.static(path.join(__dirname, '..')));
+
+// Set up cookies for yt-dlp to bypass YouTube anti-bot/age-restrictions
+const COOKIES_TMP_PATH = path.join(__dirname, 'cookies.txt');
+if (process.env.YOUTUBE_COOKIES) {
+  try {
+    // Decode base64 env var and write to cookies.txt
+    const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
+    fs.writeFileSync(COOKIES_TMP_PATH, cookieString);
+    console.log('[INFO] Loaded YouTube cookies from environment variable ✅');
+  } catch (err) {
+    console.error('[ERROR] Failed to parse YOUTUBE_COOKIES env var:', err.message);
+  }
+}
+
+function getCookiesArgs() {
+  if (fs.existsSync(COOKIES_TMP_PATH)) {
+    return ['--cookies', COOKIES_TMP_PATH];
+  }
+  return [];
+}
 
 // In-memory job store
 const jobs = {};
@@ -167,6 +189,7 @@ app.post('/api/info', async (req, res) => {
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
     '--socket-timeout', '30',
+    ...getCookiesArgs(),
     url
   ];
 
@@ -248,6 +271,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--no-playlist',
     '--socket-timeout', '60',
     '--no-warnings',
+    ...getCookiesArgs(),
     '-o', tmpFile
   ];
 
