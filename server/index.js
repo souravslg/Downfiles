@@ -211,26 +211,43 @@ app.post('/api/info', async (req, res) => {
         friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
       } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
         friendly = 'This video is private or requires sign-in.';
-      } else if (errOutput.includes('not available') || errOutput.includes('unavailable')) {
+      } else if (errOutput.includes('Requested format is not available')) {
+        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
         friendly = 'This video is unavailable in your region or has been removed.';
       }
       return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
     }
 
-    const info = JSON.parse(output);
+    let info;
+    try { info = JSON.parse(output); } catch (e) {
+      console.error('[INFO] JSON parse failed:', e.message);
+      return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
+    }
+
+    const isYouTube = (info.extractor_key || '').toLowerCase().includes('youtube');
+
     const formats = (info.formats || [])
       .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
-      .map(f => ({
-        format_id: f.format_id,
-        ext: f.ext,
-        resolution: f.resolution || (f.height ? `${f.height}p` : 'audio'),
-        filesize: f.filesize || f.filesize_approx || null,
-        vcodec: f.vcodec,
-        acodec: f.acodec,
-        fps: f.fps || null,
-        tbr: f.tbr || null,
-        note: f.format_note || ''
-      }))
+      .map(f => {
+        const height = f.height || parseInt(f.resolution) || 0;
+        // For YouTube: use height-based format selector (works on any server/client)
+        // For other sites: use the actual format_id
+        const safeFormatId = isYouTube && height
+          ? `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`
+          : f.format_id;
+        return {
+          format_id: safeFormatId,
+          ext: f.ext,
+          resolution: f.resolution || (height ? `${height}p` : 'audio'),
+          filesize: f.filesize || f.filesize_approx || null,
+          vcodec: f.vcodec,
+          acodec: f.acodec,
+          fps: f.fps || null,
+          tbr: f.tbr || null,
+          note: f.format_note || ''
+        };
+      })
       .sort((a, b) => {
         const getH = r => parseInt(r) || 0;
         return getH(b.resolution) - getH(a.resolution);
@@ -239,27 +256,22 @@ app.post('/api/info', async (req, res) => {
     // Deduplicate by resolution
     const seen = new Set();
     const uniqueFormats = formats.filter(f => {
-      const key = f.resolution + f.ext;
+      const key = f.resolution;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    try {
-      res.json({
-        title: info.title,
-        thumbnail: info.thumbnail,
-        duration: info.duration,
-        uploader: info.uploader || info.channel,
-        platform: info.extractor_key,
-        webpage_url: info.webpage_url,
-        formats: uniqueFormats,
-        best_format: info.format_id
-      });
-    } catch (e) {
-      console.error('[INFO] JSON parse failed:', e.message);
-      res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
-    }
+    res.json({
+      title: info.title,
+      thumbnail: info.thumbnail,
+      duration: info.duration,
+      uploader: info.uploader || info.channel,
+      platform: info.extractor_key,
+      webpage_url: info.webpage_url,
+      formats: uniqueFormats,
+      best_format: info.format_id
+    });
   });
 });
 
