@@ -187,6 +187,7 @@ app.post('/api/info', async (req, res) => {
 
   const args = [
     '--dump-json', '--no-playlist', '--no-warnings',
+    '--extractor-args', 'youtube:player_client=ios',
     '--socket-timeout', '30',
     ...getCookiesArgs(),
     url
@@ -268,6 +269,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   const args = [
     '-f', formatArg,
     '--no-playlist',
+    '--extractor-args', 'youtube:player_client=ios',
     '--socket-timeout', '60',
     '--no-warnings',
     ...getCookiesArgs(),
