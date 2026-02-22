@@ -231,7 +231,7 @@ app.post('/api/info', async (req, res) => {
     '--no-warnings',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=android',
+    '--extractor-args', 'youtube:player_client=default,ios',
     '--socket-timeout', '30',
     ...getCookiesArgs(),
     url
@@ -326,7 +326,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '-f', formatArg,
     '--no-playlist',
     ...getImpersonationArgs(url),
-    '--extractor-args', 'youtube:player_client=android',
+    '--extractor-args', 'youtube:player_client=default,ios',
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--socket-timeout', '60',
     '--no-warnings',
