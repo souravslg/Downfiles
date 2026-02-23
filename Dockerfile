@@ -17,7 +17,8 @@ RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
     pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
 
 # Build bgutil generate_once.js using esbuild
-# --loader:.node=empty silently ignores native canvas binaries (not needed since disableInnertube=true)
+# --format=cjs: esbuild auto-converts import.meta.dirname -> __dirname, making it runnable as plain .js
+# --loader:.node=empty: silently ignores canvas native binaries (not needed with disableInnertube=true)
 COPY bgutil-server /tmp/bgutil-server
 RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
     cd /tmp/bgutil-server && \
@@ -25,10 +26,11 @@ RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
     npx esbuild src/generate_once.ts \
     --bundle \
     --platform=node \
-    --format=esm \
+    --format=cjs \
     --loader:.node=empty \
     --outfile=/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
-    echo "✅ bgutil generate_once.js built successfully"
+    echo "✅ bgutil generate_once.js built successfully" && \
+    node /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js --version
 
 # Copy app source
 COPY . .
