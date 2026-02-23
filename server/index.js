@@ -704,6 +704,20 @@ app.get('/api/status/:jobId', (req, res) => {
   res.json(job);
 });
 
+// GET /api/sysinfo - Debug environment
+app.get('/api/sysinfo', (req, res) => {
+  try {
+    const nodeV = require('child_process').execSync('node -v').toString().trim();
+    const pythonV = require('child_process').execSync('python --version').toString().trim();
+    const ytDlpLoc = require('child_process').execSync('which yt-dlp || echo "not found"').toString().trim();
+    const nodeLoc = require('child_process').execSync('which node || echo "not found"').toString().trim();
+    const pathEnv = process.env.PATH;
+    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pathEnv, cwd: process.cwd(), cmd: YT_DLP_CMD });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`\n🚀 All In One Downloader server running at http://localhost:${PORT}\n`);
 });
