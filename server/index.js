@@ -104,24 +104,29 @@ const COBALT_FORMATS = [
 // In-memory job store
 const jobs = {};
 
-// Find yt-dlp executable — tries yt-dlp → python -m yt_dlp → python3 -m yt_dlp
+// Find yt-dlp executable — tries nixpacks venv → yt-dlp → python -m yt_dlp → python3 -m yt_dlp
 const { execSync } = require('child_process');
 let YT_DLP_CMD = 'yt-dlp';
-try {
-  execSync('yt-dlp --version', { stdio: 'ignore' });
-  console.log('yt-dlp found in PATH');
-} catch {
+if (fs.existsSync('/opt/venv/bin/yt-dlp')) {
+  YT_DLP_CMD = '/opt/venv/bin/yt-dlp';
+  console.log('yt-dlp found in Nixpacks venv: /opt/venv/bin/yt-dlp');
+} else {
   try {
-    execSync('python -m yt_dlp --version', { stdio: 'ignore' });
-    YT_DLP_CMD = 'python -m yt_dlp';
-    console.log('yt-dlp found via python -m yt_dlp');
+    execSync('yt-dlp --version', { stdio: 'ignore' });
+    console.log('yt-dlp found in PATH');
   } catch {
     try {
-      execSync('python3 -m yt_dlp --version', { stdio: 'ignore' });
-      YT_DLP_CMD = 'python3 -m yt_dlp';
-      console.log('yt-dlp found via python3 -m yt_dlp');
+      execSync('python -m yt_dlp --version', { stdio: 'ignore' });
+      YT_DLP_CMD = 'python -m yt_dlp';
+      console.log('yt-dlp found via python -m yt_dlp');
     } catch {
-      console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+      try {
+        execSync('python3 -m yt_dlp --version', { stdio: 'ignore' });
+        YT_DLP_CMD = 'python3 -m yt_dlp';
+        console.log('yt-dlp found via python3 -m yt_dlp');
+      } catch {
+        console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+      }
     }
   }
 }
