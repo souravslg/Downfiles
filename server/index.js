@@ -723,8 +723,12 @@ app.get('/api/sysinfo', (req, res) => {
     let bgutilRun = 'not tested';
     if (bgutilExists) {
       try {
-        bgutilRun = require('child_process').execSync(`node ${bgutilScript} --version 2>&1`).toString().trim().slice(0, 100);
-      } catch (e) { bgutilRun = 'ERR:' + e.message.slice(0, 150); }
+        const { execFileSync } = require('child_process');
+        bgutilRun = execFileSync('node', [bgutilScript, '--version'], { encoding: 'utf8', stderr: 'pipe' }).trim().slice(0, 200);
+      } catch (e) {
+        // e.stdout + e.stderr gives the actual crash output
+        bgutilRun = 'STDOUT:' + (e.stdout || '').slice(0, 200) + ' STDERR:' + (e.stderr || '').slice(0, 500);
+      }
     }
     res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, cwd: process.cwd(), cmd: YT_DLP_CMD });
   } catch (e) {
