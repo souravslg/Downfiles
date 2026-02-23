@@ -14,10 +14,7 @@ RUN npm install --production
 
 # Install latest yt-dlp — Python and Node.js share the same PATH in this image
 # so yt-dlp can natively call Node.js to solve YouTube bot-protection challenges
-# Explicit symlinks to ensure yt-dlp finds node regardless of PATH
-RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
-    ln -sf $(which node) /usr/local/bin/node && \
-    ln -sf $(which node) /usr/bin/node
+RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages
 
 # Copy app source
 COPY . .
