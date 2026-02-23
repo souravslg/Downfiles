@@ -168,7 +168,12 @@ function spawnYtDlp(args, options = {}) {
   const parts = YT_DLP_CMD.split(' ');
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
-  return spawn(cmd, [...pre, ...args], options);
+
+  // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
+  const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
+  const env = { ...process.env, ...(options.env || {}), PATH: pathEnv };
+
+  return spawn(cmd, [...pre, ...args], { ...options, env });
 }
 
 // Build a safe format string depending on ffmpeg availability
