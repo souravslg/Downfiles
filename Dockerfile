@@ -16,13 +16,18 @@ RUN npm install --production
 RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
     pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
 
-# Build bgutil-server so yt-dlp can use Node.js natively for PoToken solving
+# Build bgutil generate_once.js using esbuild (handles .ts imports natively, no tsc errors)
 # bgutil-ytdlp-pot-provider expects generate_once.js at /root/bgutil-ytdlp-pot-provider/server/build/
 COPY bgutil-server /tmp/bgutil-server
-RUN cd /tmp/bgutil-server && \
+RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
+    cd /tmp/bgutil-server && \
     npm install && \
-    npx tsc --outDir /root/bgutil-ytdlp-pot-provider/server/build/ --module commonjs --target es2020 --esModuleInterop true --skipLibCheck true src/generate_once.ts && \
-    echo "bgutil generate_once.js built successfully"
+    npx esbuild src/generate_once.ts \
+    --bundle \
+    --platform=node \
+    --format=esm \
+    --outfile=/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
+    echo "bgutil generate_once.js built successfully at /root/bgutil-ytdlp-pot-provider/server/build/"
 
 # Copy app source
 COPY . .
