@@ -60,6 +60,46 @@ function getExtractorArgs(url) {
 }
 
 
+// ─── Cobalt.tools API helpers ────────────────────────────────────────────────
+// Cobalt is a free, open-source download API that bypasses YouTube's datacenter
+// IP blocks. Used as an automatic fallback when yt-dlp fails for YouTube URLs.
+
+async function cobaltFetch(url, { isAudio = false, quality = 'max' } = {}) {
+  const resp = await fetch('https://api.cobalt.tools/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      url,
+      downloadMode: isAudio ? 'audio' : 'auto',
+      videoQuality: quality === 'max' || !quality ? 'max' : quality,
+      filenameStyle: 'basic',
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) throw new Error(`Cobalt API HTTP ${resp.status}`);
+  return resp.json();
+}
+
+async function youtubeOEmbed(url) {
+  const resp = await fetch(
+    `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
+    { signal: AbortSignal.timeout(8000) }
+  );
+  if (!resp.ok) throw new Error(`oEmbed HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// Standard quality options offered when cobalt is used
+const COBALT_FORMATS = [
+  { format_id: 'cobalt_max', resolution: 'Best', ext: 'mp4', note: '⚡ via cobalt' },
+  { format_id: 'cobalt_1080', resolution: '1080p', ext: 'mp4', note: '⚡ via cobalt' },
+  { format_id: 'cobalt_720', resolution: '720p', ext: 'mp4', note: '⚡ via cobalt' },
+  { format_id: 'cobalt_480', resolution: '480p', ext: 'mp4', note: '⚡ via cobalt' },
+  { format_id: 'cobalt_360', resolution: '360p', ext: 'mp4', note: '⚡ via cobalt' },
+  { format_id: 'cobalt_audio', resolution: 'audio', ext: 'mp3', note: '⚡ via cobalt' },
+];
+// ─────────────────────────────────────────────────────────────────────────────
+
 // In-memory job store
 const jobs = {};
 
@@ -250,9 +290,35 @@ app.post('/api/info', async (req, res) => {
   const proc = spawnYtDlp(args);
   proc.stdout.on('data', d => { output += d.toString(); });
   proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
-  proc.on('close', (code) => {
+  proc.on('close', async (code) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
     if (code !== 0) {
+      // Try cobalt.tools fallback for YouTube before returning error
+      if (isYouTube) {
+        console.log('[INFO] yt-dlp failed, trying cobalt.tools fallback...');
+        try {
+          const [oembed, cobalt] = await Promise.all([
+            youtubeOEmbed(url),
+            cobaltFetch(url, { isAudio: false, quality: 'max' }),
+          ]);
+          if (cobalt.status === 'tunnel' || cobalt.status === 'redirect' || cobalt.status === 'picker') {
+            console.log('[INFO] cobalt fallback succeeded!');
+            return res.json({
+              title: oembed.title,
+              thumbnail: oembed.thumbnail_url,
+              duration: null,
+              uploader: oembed.author_name,
+              platform: 'Youtube',
+              formats: COBALT_FORMATS,
+              best_format: 'cobalt_max',
+              via_cobalt: true,
+            });
+          }
+        } catch (cobaltErr) {
+          console.error('[INFO] cobalt fallback failed:', cobaltErr.message);
+        }
+      }
+
       let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
       if (errOutput.includes('DRM protected')) {
         friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
@@ -419,22 +485,45 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
   req.on('close', () => proc.kill('SIGTERM'));
 }
 
+// Helper: handle cobalt download redirect
+async function handleCobaltDownload(res, url, format_id, isAudio, title) {
+  const quality = (format_id || '').replace('cobalt_', '');
+  const isAudioReq = quality === 'audio' || isAudio;
+  try {
+    const result = await cobaltFetch(url, { isAudio: isAudioReq, quality: isAudioReq ? 'max' : quality });
+    if (result.status === 'tunnel' || result.status === 'redirect') {
+      setDownloadFilename(res, title, isAudioReq ? 'mp3' : 'mp4');
+      return res.redirect(302, result.url);
+    }
+    return res.status(502).json({ error: 'Cobalt returned unexpected status: ' + result.status });
+  } catch (e) {
+    console.error('[COBALT] Download failed:', e.message);
+    return res.status(502).json({ error: 'Cobalt download failed', msg: e.message });
+  }
+}
+
 // GET /api/download?url=...&format_id=...&audio_only=1&title=...
-app.get('/api/download', (req, res) => {
+app.get('/api/download', async (req, res) => {
   const { url, format_id, audio_only, title } = req.query;
   if (!url) return res.status(400).send('URL is required');
   const isAudio = audio_only === '1' || audio_only === 'true';
+  if (format_id && format_id.startsWith('cobalt_')) {
+    return handleCobaltDownload(res, url, format_id, isAudio, title);
+  }
   streamDownload(res, req, url, format_id, isAudio, title);
 });
 
 // POST /api/download - accepts JSON body as well
-app.post('/api/download', (req, res) => {
+app.post('/api/download', async (req, res) => {
   const url = req.body?.url;
   const format_id = req.body?.format_id;
   const audio_only = req.body?.audio_only;
   const title = req.body?.title;
   if (!url) return res.status(400).json({ error: 'URL is required' });
   const isAudio = audio_only === '1' || audio_only === 'true' || audio_only === true;
+  if (format_id && format_id.startsWith('cobalt_')) {
+    return handleCobaltDownload(res, url, format_id, isAudio, title);
+  }
   streamDownload(res, req, url, format_id, isAudio, title);
 });
 
