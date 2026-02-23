@@ -44,14 +44,19 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  if (process.env.YOUTUBE_COOKIES) {
-    // If the user has valid cookies, trying to spoof mobile/web clients alongside authenticated sessions
-    // breaks YouTube's bot detection, resulting in 'No video formats found!'. 
-    // Let yt-dlp determine the client naturally.
-    return 'default';
-  }
-  // testing web client primarily to see if current SABR algorithms bypass datacenter blocks
-  return 'web,ios';
+  // 'default' lets yt-dlp pick the best available client automatically.
+  // Forcing specific clients like 'web,ios' can cause "Requested format is not available" errors.
+  // On Railway/datacenter IPs, set YOUTUBE_CLIENT env var to e.g. 'tv_embedded' to bypass blocks.
+  return process.env.YOUTUBE_CLIENT || 'default';
+}
+
+// Returns extractor-args array only when a non-default client is set
+function getExtractorArgs(url) {
+  const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
+  if (!isYouTube) return [];
+  const client = getYouTubeClient();
+  if (!client || client === 'default') return [];
+  return ['--extractor-args', 'youtube:player_client=' + client];
 }
 
 
@@ -181,7 +186,7 @@ app.get('/api/yt-debug', (req, res) => {
     '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=' + playerClient,
+    ...((!playerClient || playerClient === 'default') ? [] : ['--extractor-args', 'youtube:player_client=' + playerClient]),
     '--rm-cache-dir',
     '--socket-timeout', '20',
     ...cookiesArr,
@@ -234,7 +239,7 @@ app.post('/api/info', async (req, res) => {
     '--no-warnings',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    '--extractor-args', 'youtube:player_client=' + getYouTubeClient(),
+    ...getExtractorArgs(url),
     '--rm-cache-dir',
     '--socket-timeout', '30',
     ...getCookiesArgs(),
@@ -327,7 +332,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '-f', formatArg,
     '--no-playlist',
     ...getImpersonationArgs(url),
-    '--extractor-args', 'youtube:player_client=' + getYouTubeClient(),
+    ...getExtractorArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--rm-cache-dir',
     '--socket-timeout', '60',
