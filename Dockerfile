@@ -22,7 +22,7 @@ RUN npm install --production
 COPY bgutil-server /root/bgutil-ytdlp-pot-provider/server
 RUN cd /root/bgutil-ytdlp-pot-provider/server && \
     npm install && \
-    npm run build && \
+    npx tsc && \
     echo "bgutil built OK: $(ls build/)"
 
 # Copy the rest of the app
