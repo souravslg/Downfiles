@@ -706,11 +706,26 @@ app.get('/api/status/:jobId', (req, res) => {
 app.get('/api/sysinfo', (req, res) => {
   try {
     const nodeV = require('child_process').execSync('node -v').toString().trim();
-    const pythonV = require('child_process').execSync('python --version').toString().trim();
-    const ytDlpLoc = require('child_process').execSync('which yt-dlp || echo "not found"').toString().trim();
-    const nodeLoc = require('child_process').execSync('which node || echo "not found"').toString().trim();
-    const pathEnv = process.env.PATH;
-    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pathEnv, cwd: process.cwd(), cmd: YT_DLP_CMD });
+    const pythonV = require('child_process').execSync('python3 --version 2>&1').toString().trim();
+    const ytDlpLoc = require('child_process').execSync('which yt-dlp 2>/dev/null || echo not-found').toString().trim();
+    const nodeLoc = require('child_process').execSync('which node 2>/dev/null || echo not-found').toString().trim();
+    // Test if Python can spawn node (same way yt-dlp does internally)
+    let pythonCanSpawnNode = 'FAILED';
+    try {
+      pythonCanSpawnNode = require('child_process').execSync(
+        `python3 -c "import subprocess; r=subprocess.run(['node','-e','process.stdout.write(String(40+2))'], capture_output=True, text=True, timeout=5); print(r.stdout.strip() or 'empty: '+r.stderr[:100])"`
+      ).toString().trim();
+    } catch (e) { pythonCanSpawnNode = 'ERR:' + e.message.slice(0, 150); }
+    // Check bgutil generate_once.js
+    const bgutilScript = '/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js';
+    const bgutilExists = fs.existsSync(bgutilScript);
+    let bgutilRun = 'not tested';
+    if (bgutilExists) {
+      try {
+        bgutilRun = require('child_process').execSync(`node ${bgutilScript} --version 2>&1`).toString().trim().slice(0, 100);
+      } catch (e) { bgutilRun = 'ERR:' + e.message.slice(0, 150); }
+    }
+    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, cwd: process.cwd(), cmd: YT_DLP_CMD });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
