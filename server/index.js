@@ -220,6 +220,7 @@ app.post('/api/info', async (req, res) => {
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--extractor-args', 'youtube:player_client=' + getYouTubeClient(),
+    '--rm-cache-dir',
     '--socket-timeout', '30',
     ...getCookiesArgs(),
     url
@@ -316,6 +317,7 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     ...getImpersonationArgs(url),
     '--extractor-args', 'youtube:player_client=' + getYouTubeClient(),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
+    '--rm-cache-dir',
     '--socket-timeout', '60',
     '--no-warnings',
     ...getCookiesArgs(),
