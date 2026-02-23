@@ -46,8 +46,8 @@ function getCookiesArgs() {
 
 function getYouTubeClient() {
   // Use a comma-separated list of multiple clients so yt-dlp can fallback automatically
-  // if YouTube blocks the datacenter IP on one of them.
-  return 'ios,android,web';
+  // default = web client (full resolutions), fallback to ios
+  return 'default,ios';
 }
 
 
@@ -258,11 +258,8 @@ app.post('/api/info', async (req, res) => {
       .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
       .map(f => {
         const height = f.height || parseInt(f.resolution) || 0;
-        // For YouTube: use height-based format selector (works on any server/client)
-        // For other sites: use the actual format_id
-        const safeFormatId = isYouTube && height
-          ? `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`
-          : f.format_id;
+        // Let yt-dlp and ffmpeg pick the exact video format ID and merge it with bestaudio later
+        const safeFormatId = f.format_id;
         return {
           format_id: safeFormatId,
           ext: f.ext,
