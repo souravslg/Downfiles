@@ -55,8 +55,9 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  if (!client || client === 'default') return [];
-  return ['--extractor-args', 'youtube:player_client=' + client];
+  // Tell yt-dlp to explicitly use nodejs to evaluate the bot protection challenge natively
+  if (!client || client === 'default') return ['--extractor-args', 'youtube:po_token_js_provider=nodejs'];
+  return ['--extractor-args', `youtube:player_client=${client};po_token_js_provider=nodejs`];
 }
 
 
@@ -226,7 +227,7 @@ app.get('/api/yt-debug', (req, res) => {
     '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    ...((!playerClient || playerClient === 'default') ? [] : ['--extractor-args', 'youtube:player_client=' + playerClient]),
+    ...getExtractorArgs(url),
     '--rm-cache-dir',
     '--socket-timeout', '20',
     ...cookiesArr,
