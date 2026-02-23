@@ -45,12 +45,9 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  // If we have cookies, 'web' client gives the best quality and bypass chance
-  if (fs.existsSync(COOKIES_TMP_PATH)) {
-    return 'web';
-  }
-  // Otherwise, default/ios fallback
-  return 'default,ios';
+  // Use a comma-separated list of multiple clients so yt-dlp can fallback automatically
+  // if YouTube blocks the datacenter IP on one of them.
+  return 'ios,android,web';
 }
 
 
@@ -190,8 +187,6 @@ app.get('/api/yt-debug', (req, res) => {
   p2.on('close', c => res.json({
     code: c, hasCookies, clientUsed: playerClient,
     cookiesTmpPath: COOKIES_TMP_PATH,
-    cookiesRepoPath: COOKIES_REPO_PATH,
-    repoFileExists: fs.existsSync(COOKIES_REPO_PATH),
     stderr: err.slice(0, 500), stdout_len: out.length
   }));
 });
