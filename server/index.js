@@ -44,17 +44,17 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  // tv_embedded bypasses PoToken requirements on datacenter IPs (Railway, Render etc.)
-  // It doesn't need Node.js JS challenge solving and works reliably without cookies.
-  return process.env.YOUTUBE_CLIENT || 'tv_embedded';
+  // Use YOUTUBE_CLIENT env var to override; default lets yt-dlp pick best client
+  // bgutil-ytdlp-pot-provider plugin auto-provides PoToken for whichever client is chosen
+  return process.env.YOUTUBE_CLIENT || 'default';
 }
 
-// Returns extractor-args array only when a non-default client is set
+// Returns extractor-args for YouTube — with bgutil plugin active, no need to force client
 function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  // bgutil-ytdlp-pot-provider plugin will automatically provide PoToken via generate_once.js
+  if (client === 'default') return [];
   return ['--extractor-args', `youtube:player_client=${client}`];
 }
 
