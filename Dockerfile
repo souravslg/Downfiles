@@ -16,9 +16,9 @@ RUN npm install --production
 RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
     pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
 
-# Compile bgutil generate_once.js using esbuild with CJS format
-# CJS = native Node.js CommonJS, no ESM interop shims, no __require2 issues
-# --loader:.node=empty silently drops canvas native binary (not needed with disableInnertube=true)
+# Compile bgutil generate_once.js
+# jsdom and canvas are marked EXTERNAL (they have static files that esbuild can't bundle)
+# node_modules is copied alongside so Node.js can find jsdom + its default-stylesheet.css
 COPY bgutil-server /tmp/bgutil-server
 RUN cd /tmp/bgutil-server && \
     npm install && \
@@ -27,9 +27,12 @@ RUN cd /tmp/bgutil-server && \
     --bundle \
     --platform=node \
     --format=cjs \
+    --external:jsdom \
+    --external:canvas \
     --loader:.node=empty \
     --outfile=/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
-    echo "✅ bgutil generate_once.js compiled (CJS)"
+    cp -r node_modules /root/bgutil-ytdlp-pot-provider/server/node_modules && \
+    echo "✅ bgutil generate_once.js compiled (CJS + external jsdom)"
 
 # Copy app source
 COPY . .
