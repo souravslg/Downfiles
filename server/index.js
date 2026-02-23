@@ -44,7 +44,12 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  // Use a comma-separated list of multiple clients so yt-dlp can fallback automatically
+  if (process.env.YOUTUBE_COOKIES) {
+    // If the user has valid cookies, trying to spoof mobile/web clients alongside authenticated sessions
+    // breaks YouTube's bot detection, resulting in 'No video formats found!'. 
+    // Let yt-dlp determine the client naturally.
+    return 'default';
+  }
   // testing web client primarily to see if current SABR algorithms bypass datacenter blocks
   return 'web,ios';
 }
