@@ -16,17 +16,19 @@ RUN npm install --production
 RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
     pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
 
-# Download the official pre-built bgutil server release and place generate_once.js
-# This avoids TypeScript compilation issues entirely
+# CACHE BUST: forces Docker to re-run everything below this line on every build
+ARG CACHEBUST=20260223_2200
+
+# Download the official pre-built bgutil server release v1.2.2
+# Avoids TypeScript compilation entirely — uses official pre-compiled generate_once.js
 RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
     wget -q "https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/download/1.2.2/bgutil-ytdlp-pot-provider.zip" \
     -O /tmp/bgutil.zip && \
     unzip -q /tmp/bgutil.zip -d /tmp/bgutil-release && \
     find /tmp/bgutil-release -name "generate_once.js" | head -1 | xargs -I{} cp {} /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
-    find /tmp/bgutil-release -type d -name "node_modules" | head -1 | xargs -I{} cp -r {} /root/bgutil-ytdlp-pot-provider/server/node_modules 2>/dev/null || true && \
     ls -la /root/bgutil-ytdlp-pot-provider/server/build/ && \
     rm -rf /tmp/bgutil.zip /tmp/bgutil-release && \
-    echo "✅ bgutil generate_once.js installed from official release"
+    echo "✅ bgutil generate_once.js installed from official release v1.2.2"
 
 # Copy app source
 COPY . .
