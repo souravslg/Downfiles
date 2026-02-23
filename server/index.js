@@ -46,8 +46,8 @@ function getCookiesArgs() {
 
 function getYouTubeClient() {
   // Use a comma-separated list of multiple clients so yt-dlp can fallback automatically
-  // default = web client (full resolutions), fallback to ios
-  return 'default,ios';
+  // ios bypasses the sign-in requirement on datacenter IPs
+  return 'ios,android';
 }
 
 
