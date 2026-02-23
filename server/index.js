@@ -512,12 +512,7 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
       const mediaRes = await fetch(mediaUrl);
       if (!mediaRes.ok) throw new Error(`Media fetch failed: ${mediaRes.status}`);
 
-      const len = mediaRes.headers.get('content-length');
-      if (len) res.setHeader('Content-Length', len);
-
-      const { Readable } = require('stream');
-      const { pipeline } = require('stream/promises');
-      await pipeline(Readable.fromWeb(mediaRes.body), res);
+      return mediaRes.body.pipe(res);
     } catch (e) {
       console.error('[INFO] RapidAPI streaming failed:', e);
       if (!res.headersSent) return res.status(500).send('Streaming failed: ' + e.message);
