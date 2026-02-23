@@ -709,6 +709,22 @@ app.get('/api/status/:jobId', (req, res) => {
   res.json(job);
 });
 
+// GET /api/test-js - Debug JS engines
+app.get('/api/test-js', (req, res) => {
+  try {
+    const { execSync } = require('child_process');
+    const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
+    const env = { ...process.env, PATH: pathEnv };
+    const bun = execSync('bun --version', { env }).toString().trim();
+    const node = execSync('node --version', { env }).toString().trim();
+    const whichBun = execSync('which bun', { env }).toString().trim();
+    const whichNode = execSync('which node', { env }).toString().trim();
+    res.json({ bun, node, whichBun, whichNode, path: pathEnv });
+  } catch (e) {
+    res.status(500).json({ error: e.message, stack: e.stack });
+  }
+});
+
 // GET /api/sysinfo - Debug environment
 app.get('/api/sysinfo', (req, res) => {
   try {
