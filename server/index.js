@@ -27,18 +27,17 @@ app.use(express.static(path.join(__dirname, '..')));
 // Use /tmp so it's always writable on any Linux container (Railway, Render, Fly, etc.)
 const os = require('os');
 const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
-if (process.env.YOUTUBE_COOKIES) {
-  try {
-    const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
-    fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
-    console.log('[INFO] Loaded YouTube cookies from environment variable ✅ path:', COOKIES_TMP_PATH);
-  } catch (err) {
-    console.error('[ERROR] Failed to write YOUTUBE_COOKIES:', err.message);
-  }
-}
 
 function getCookiesArgs() {
-  if (fs.existsSync(COOKIES_TMP_PATH)) {
+  if (process.env.YOUTUBE_COOKIES) {
+    try {
+      const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
+      fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
+      return ['--cookies', COOKIES_TMP_PATH];
+    } catch (err) {
+      console.error('[ERROR] Failed to write YOUTUBE_COOKIES dynamically:', err.message);
+    }
+  } else if (fs.existsSync(COOKIES_TMP_PATH)) {
     return ['--cookies', COOKIES_TMP_PATH];
   }
   return [];
