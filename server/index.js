@@ -54,7 +54,8 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  return ['--extractor-args', `youtube:player_client=${client}`, '--extractor-args', 'youtube:skip=configs'];
+  // bgutil-ytdlp-pot-provider plugin will automatically provide PoToken via generate_once.js
+  return ['--extractor-args', `youtube:player_client=${client}`];
 }
 
 
