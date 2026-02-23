@@ -1,8 +1,8 @@
 FROM nikolaik/python-nodejs:python3.11-nodejs20
 
-# Install ffmpeg and wget
+# Install ffmpeg and system deps
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl wget && \
+    apt-get install -y ffmpeg curl wget build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -16,8 +16,8 @@ RUN npm install --production
 RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
     pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
 
-# Build bgutil generate_once.js using esbuild (handles .ts imports natively, no tsc errors)
-# bgutil-ytdlp-pot-provider expects generate_once.js at /root/bgutil-ytdlp-pot-provider/server/build/
+# Build bgutil generate_once.js
+# Mark native addons (canvas.node etc.) as external — they'll be resolved from node_modules at runtime
 COPY bgutil-server /tmp/bgutil-server
 RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
     cd /tmp/bgutil-server && \
@@ -26,8 +26,11 @@ RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
     --bundle \
     --platform=node \
     --format=esm \
+    --external:canvas \
+    --external:*.node \
     --outfile=/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
-    echo "bgutil generate_once.js built successfully at /root/bgutil-ytdlp-pot-provider/server/build/"
+    cp -r node_modules /root/bgutil-ytdlp-pot-provider/server/node_modules && \
+    echo "bgutil generate_once.js built successfully"
 
 # Copy app source
 COPY . .
