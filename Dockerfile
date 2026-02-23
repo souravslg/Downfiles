@@ -12,10 +12,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# Install latest yt-dlp — Python and Node.js share the same PATH in this image
+# Install latest yt-dlp and the standard OAuth2 PO Token Provider plugin
+# Python and Node.js share the same PATH in this image
 # so yt-dlp can natively call Node.js to solve YouTube bot-protection challenges
 # Install BUN as a guaranteed fallback JS engine for yt-dlp
-RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
+RUN pip3 install -U --pre yt-dlp curl-cffi yt-dlp-youtube-oauth2 --break-system-packages && \
     curl -fsSL https://bun.sh/install | bash && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun
 
