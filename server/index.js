@@ -47,14 +47,16 @@ function getYouTubeClient() {
   return process.env.YOUTUBE_CLIENT || 'default';
 }
 
-// bgutil-ytdlp-pot-provider handles PoToken automatically as a GetPOT plugin.
-// No need to pass po_token_js_provider — the plugin intercepts yt-dlp's token requests.
+// po_token_js_provider=nodejs tells yt-dlp to use Node.js to evaluate YouTube's bot-protection
+// challenges natively. Works because nikolaik/python-nodejs puts both in the same system PATH.
 function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  if (!client || client === 'default') return [];
-  return ['--extractor-args', `youtube:player_client=${client}`];
+  if (!client || client === 'default') {
+    return ['--extractor-args', 'youtube:po_token_js_provider=nodejs'];
+  }
+  return ['--extractor-args', `youtube:player_client=${client};po_token_js_provider=nodejs`];
 }
 
 
