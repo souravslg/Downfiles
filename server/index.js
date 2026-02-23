@@ -173,7 +173,7 @@ function setDownloadFilename(res, title, ext) {
 // GET /api/yt-debug - shows raw yt-dlp output for debugging
 app.get('/api/yt-debug', (req, res) => {
   const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-  const playerClient = getYouTubeClient();
+  const playerClient = req.query.client || getYouTubeClient();
   const cookiesArr = getCookiesArgs();
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
 
