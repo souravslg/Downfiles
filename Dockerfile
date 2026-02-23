@@ -9,8 +9,8 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Pin yt-dlp to stable version before SABR (pre-2025) + curl_cffi for impersonation
-RUN pip3 install -U yt-dlp "curl_cffi==0.7.3" --break-system-packages && \
+# Pin yt-dlp to nightly version to bypass No Formats block
+RUN pip3 install -U "yt-dlp[default]@git+https://github.com/yt-dlp/yt-dlp.git@nightly" "curl_cffi==0.7.3" --break-system-packages && \
     yt-dlp --version && \
     python3 -c "import curl_cffi; print('curl_cffi OK:', curl_cffi.__version__)"
 # Copy package files and install Node dependencies
