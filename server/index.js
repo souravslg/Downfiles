@@ -168,8 +168,10 @@ function setDownloadFilename(res, title, ext) {
 // GET /api/yt-debug - shows raw yt-dlp output for debugging
 app.get('/api/yt-debug', (req, res) => {
   const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
   const playerClient = getYouTubeClient();
+  const cookiesArr = getCookiesArgs();
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+
   const dbgArgs = [
     '--dump-json', '--no-playlist', '--no-warnings',
     ...getImpersonationArgs(url),
@@ -177,7 +179,7 @@ app.get('/api/yt-debug', (req, res) => {
     '--extractor-args', 'youtube:player_client=' + playerClient,
     '--rm-cache-dir',
     '--socket-timeout', '20',
-    ...getCookiesArgs(),
+    ...cookiesArr,
     url
   ];
   let out = '', err = '';
