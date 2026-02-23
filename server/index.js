@@ -173,9 +173,10 @@ app.get('/api/yt-debug', (req, res) => {
   const playerClient = getYouTubeClient();
   const dbgArgs = [
     '--dump-json', '--no-playlist', '--no-warnings',
-    '--impersonate', 'chrome',
+    ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--extractor-args', 'youtube:player_client=' + playerClient,
+    '--rm-cache-dir',
     '--socket-timeout', '20',
     ...getCookiesArgs(),
     url
@@ -185,7 +186,9 @@ app.get('/api/yt-debug', (req, res) => {
   p2.stdout.on('data', d => { out += d; });
   p2.stderr.on('data', d => { err += d; });
   p2.on('close', c => res.json({
-    code: c, hasCookies, clientUsed: playerClient,
+    code: c, hasCookies,
+    hasEnvVar: !!process.env.YOUTUBE_COOKIES,
+    clientUsed: playerClient,
     cookiesTmpPath: COOKIES_TMP_PATH,
     stderr: err.slice(0, 500), stdout_len: out.length
   }));
