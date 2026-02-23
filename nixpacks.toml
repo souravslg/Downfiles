@@ -2,10 +2,10 @@
 # Installs Python (for yt-dlp) + ffmpeg alongside Node.js
 
 [phases.setup]
-nixPkgs = ["python311", "ffmpeg", "nodejs_20"]
+nixPkgs = ["python311", "ffmpeg", "nodejs_20", "bun"]
 
 [phases.install]
-cmds = ["npm install", "pip install -U --pre yt-dlp 'curl-cffi==0.7.3'"]
+cmds = ["npm install", "pip install -U --pre yt-dlp curl-cffi"]
 
 [start]
 cmd = "node server/index.js"
