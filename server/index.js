@@ -46,8 +46,8 @@ function getCookiesArgs() {
 
 function getYouTubeClient() {
   // Use a comma-separated list of multiple clients so yt-dlp can fallback automatically
-  // android client is currently the most reliable for bypassing datacenter sign-in blocks
-  return 'android,ios';
+  // testing web client primarily to see if current SABR algorithms bypass datacenter blocks
+  return 'web,ios';
 }
 
 
