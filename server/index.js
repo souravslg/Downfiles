@@ -257,21 +257,104 @@ app.post('/api/info', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
   // Strip YouTube playlist/mix params — only keep the video ID
+  let videoId = null;
   try {
     const u = new URL(url);
     if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
-      const v = u.hostname.includes('youtu.be')
+      videoId = u.hostname.includes('youtu.be')
         ? u.pathname.replace('/', '')
         : u.searchParams.get('v');
-      if (v) url = `https://www.youtube.com/watch?v=${v}`;
+      if (videoId) url = `https://www.youtube.com/watch?v=${videoId}`;
     }
   } catch { }
 
   console.log(`[INFO] Fetching: ${url}`);
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
-  console.log(`[INFO] Cookies loaded: ${hasCookies}`);
+  const isYouTube = !!videoId;
 
-  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+  // ── RapidAPI YouTube Fallback ──
+  // Bypasses datacenter blocks cleanly
+  if (isYouTube) {
+    try {
+      console.log('[INFO] YouTube detected — trying RapidAPI fallback...');
+      const rapidUrl = `https://youtube-media-downloader.p.rapidapi.com/v2/video/details?videoId=${videoId}`;
+      const apiRes = await fetch(rapidUrl, {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-host': 'youtube-media-downloader.p.rapidapi.com',
+          'x-rapidapi-key': '104f93455emsha4a8e06a6af7a46p155429jsn80530d8ea7a9'
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+
+      const data = await apiRes.json();
+      if (!apiRes.ok || data.message === "You are not subscribed to this API.") {
+        console.warn('[INFO] RapidAPI returned error:', data.message || apiRes.status);
+      } else if (data.status === false || data.error) {
+        console.warn('[INFO] RapidAPI inner error:', data);
+      } else {
+        // Map RapidAPI response to our format
+        console.log('[INFO] RapidAPI succeeded');
+        const formats = [];
+
+        // Videos
+        if (data.videos && data.videos.items) {
+          data.videos.items.forEach((v, i) => {
+            formats.push({
+              format_id: `rapid_video_${i}`,
+              ext: v.extension || 'mp4',
+              resolution: v.quality || 'unknown',
+              filesize: null,
+              vcodec: 'avc1',
+              acodec: v.hasAudio ? 'mp4a' : 'none',
+              note: `${v.sizeText || ''} ${v.hasAudio ? '(Audio+Video)' : '(Video Only)'}`.trim()
+            });
+          });
+        }
+
+        // Audios
+        if (data.audios && data.audios.items) {
+          data.audios.items.forEach((a, i) => {
+            formats.push({
+              format_id: `rapid_audio_${i}`,
+              ext: a.extension || 'mp3',
+              resolution: 'audio',
+              filesize: null,
+              vcodec: 'none',
+              acodec: 'mp4a',
+              note: a.sizeText || 'Audio'
+            });
+          });
+        }
+
+        // Dedup by note/resolution just in case
+        const seen = new Set();
+        const uniqueFormats = formats.filter(f => {
+          const id = f.resolution + f.note;
+          if (seen.has(id)) return false;
+          seen.add(id); return true;
+        });
+
+        const thumb = (data.thumbnails && data.thumbnails.length > 0) ? data.thumbnails[data.thumbnails.length - 1].url : null;
+
+        return res.json({
+          title: data.title || 'YouTube Video',
+          thumbnail: thumb,
+          duration: data.lengthSeconds ? parseInt(data.lengthSeconds) : null,
+          uploader: data.author ? data.author.name : 'YouTube',
+          platform: 'Youtube',
+          webpage_url: url,
+          formats: uniqueFormats,
+          best_format: formats.length > 0 ? formats[0].format_id : 'auto'
+        });
+      }
+    } catch (rapidErr) {
+      console.error('[INFO] RapidAPI fallback failed:', rapidErr.message, '— falling back to yt-dlp');
+    }
+  }
+
+  // ── yt-dlp path (YouTube fallback + all non-YouTube platforms) ──
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+  console.log(`[INFO] Running yt-dlp | cookies: ${hasCookies}`);
 
   const args = [
     '--dump-json',
@@ -386,7 +469,58 @@ app.post('/api/info', async (req, res) => {
 });
 
 // Download to a temp file, then stream to client.
-function streamDownload(res, req, url, format_id, isAudio, title) {
+async function streamDownload(res, req, url, format_id, isAudio, title) {
+  // ── Handle RapidAPI Downloads (proxy the direct media URL) ──
+  if (format_id && format_id.startsWith('rapid_')) {
+    console.log(`[INFO] Streaming via RapidAPI: ${format_id}`);
+    try {
+      const u = new URL(url);
+      const videoId = u.searchParams.get('v') || u.pathname.replace('/', '');
+      const rapidUrl = `https://youtube-media-downloader.p.rapidapi.com/v2/video/details?videoId=${videoId}`;
+      const apiRes = await fetch(rapidUrl, {
+        headers: {
+          'x-rapidapi-host': 'youtube-media-downloader.p.rapidapi.com',
+          'x-rapidapi-key': '104f93455emsha4a8e06a6af7a46p155429jsn80530d8ea7a9'
+        }
+      });
+      const data = await apiRes.json();
+
+      const isRapidVideo = format_id.startsWith('rapid_video_');
+      const rapidIdx = parseInt(format_id.split('_').pop() || '0');
+      let mediaUrl = null;
+      let ext = 'mp4';
+
+      if (isRapidVideo && data.videos && data.videos.items[rapidIdx]) {
+        mediaUrl = data.videos.items[rapidIdx].url;
+        ext = data.videos.items[rapidIdx].extension || 'mp4';
+      } else if (!isRapidVideo && data.audios && data.audios.items[rapidIdx]) {
+        mediaUrl = data.audios.items[rapidIdx].url;
+        ext = data.audios.items[rapidIdx].extension || 'mp3';
+      }
+
+      if (!mediaUrl) {
+        console.error('[INFO] RapidAPI download URL not found for id:', format_id);
+        return res.status(404).send('Media format not found via API');
+      }
+
+      const safeTitle = (title || data.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}.${ext}"`);
+      if (isRapidVideo) res.setHeader('Content-Type', 'video/mp4');
+      else res.setHeader('Content-Type', 'audio/mpeg');
+
+      // Proxy the stream
+      const mediaRes = await fetch(mediaUrl);
+      if (!mediaRes.ok) throw new Error(`Media fetch failed: ${mediaRes.status}`);
+
+      return mediaRes.body.pipe(res);
+    } catch (e) {
+      console.error('[INFO] RapidAPI streaming failed:', e);
+      if (!res.headersSent) return res.status(500).send('Streaming failed: ' + e.message);
+      return;
+    }
+  }
+
+  // ── Normal yt-dlp Download ──
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
