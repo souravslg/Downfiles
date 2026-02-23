@@ -44,10 +44,9 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  // 'default' lets yt-dlp pick the best available client automatically.
-  // Forcing specific clients like 'web,ios' can cause "Requested format is not available" errors.
-  // On Railway/datacenter IPs, set YOUTUBE_CLIENT env var to e.g. 'tv_embedded' to bypass blocks.
-  return process.env.YOUTUBE_CLIENT || 'default';
+  // tv_embedded bypasses PoToken requirements on datacenter IPs (Railway, Render etc.)
+  // It doesn't need Node.js JS challenge solving and works reliably without cookies.
+  return process.env.YOUTUBE_CLIENT || 'tv_embedded';
 }
 
 // Returns extractor-args array only when a non-default client is set
@@ -55,9 +54,7 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  // Tell yt-dlp to explicitly use nodejs to evaluate the bot protection challenge natively
-  if (!client || client === 'default') return ['--extractor-args', 'youtube:po_token_js_provider=nodejs'];
-  return ['--extractor-args', `youtube:player_client=${client};po_token_js_provider=nodejs`];
+  return ['--extractor-args', `youtube:player_client=${client}`, '--extractor-args', 'youtube:skip=configs'];
 }
 
 
