@@ -46,8 +46,8 @@ function getCookiesArgs() {
 
 function getYouTubeClient() {
   // Use a comma-separated list of multiple clients so yt-dlp can fallback automatically
-  // ios bypasses the sign-in requirement on datacenter IPs
-  return 'ios,android';
+  // android client is currently the most reliable for bypassing datacenter sign-in blocks
+  return 'android,ios';
 }
 
 
