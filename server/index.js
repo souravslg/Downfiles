@@ -245,7 +245,7 @@ app.get('/api/yt-debug', (req, res) => {
     clientUsed: playerClient,
     ytDlpVersion: ytDlpVersion,
     cookiesTmpPath: COOKIES_TMP_PATH,
-    stderr: err.slice(0, 1500), stdout_len: out.length
+    stderr: err.slice(0, 5000), stdout_len: out.length
   }));
 });
 
