@@ -15,6 +15,10 @@ RUN npm install --production
 # Install latest yt-dlp and dependencies
 RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages
 
+# Install yt-dlp PoToken provider plugin so yt-dlp can use Node.js natively
+# This is what enables yt-dlp to solve YouTube bot-protection challenges
+RUN pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
+
 # Copy app source
 COPY . .
 
