@@ -731,7 +731,7 @@ app.get('/api/sysinfo', (req, res) => {
         bgutilRun = 'STDOUT:' + (e.stdout || '').slice(0, 200) + ' STDERR:' + (e.stderr || '').slice(0, 500);
       }
     }
-    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, cwd: process.cwd(), cmd: YT_DLP_CMD });
+    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, rapidApiSet: !!process.env.RAPID_API_KEY, cobaltApiSet: !!process.env.COBALT_API_URL, cwd: process.cwd(), cmd: YT_DLP_CMD });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
