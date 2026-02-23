@@ -2,7 +2,7 @@ FROM nikolaik/python-nodejs:python3.11-nodejs20
 
 # Install ffmpeg and system deps
 RUN apt-get update && \
-    apt-get install -y ffmpeg curl wget && \
+    apt-get install -y ffmpeg curl wget unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -16,21 +16,17 @@ RUN npm install --production
 RUN pip3 install -U --pre yt-dlp curl-cffi --break-system-packages && \
     pip3 install -U yt-dlp-get-pot bgutil-ytdlp-pot-provider --break-system-packages
 
-# Build bgutil generate_once.js using esbuild
-# --format=cjs: esbuild auto-converts import.meta.dirname -> __dirname, making it runnable as plain .js
-# --loader:.node=empty: silently ignores canvas native binaries (not needed with disableInnertube=true)
-COPY bgutil-server /tmp/bgutil-server
+# Download the official pre-built bgutil server release and place generate_once.js
+# This avoids TypeScript compilation issues entirely
 RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
-    cd /tmp/bgutil-server && \
-    npm install && \
-    npx esbuild src/generate_once.ts \
-    --bundle \
-    --platform=node \
-    --format=cjs \
-    --loader:.node=empty \
-    --outfile=/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
-    echo "✅ bgutil generate_once.js built successfully" && \
-    node /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js --version
+    wget -q "https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/download/1.2.2/bgutil-ytdlp-pot-provider.zip" \
+    -O /tmp/bgutil.zip && \
+    unzip -q /tmp/bgutil.zip -d /tmp/bgutil-release && \
+    find /tmp/bgutil-release -name "generate_once.js" | head -1 | xargs -I{} cp {} /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js && \
+    find /tmp/bgutil-release -type d -name "node_modules" | head -1 | xargs -I{} cp -r {} /root/bgutil-ytdlp-pot-provider/server/node_modules 2>/dev/null || true && \
+    ls -la /root/bgutil-ytdlp-pot-provider/server/build/ && \
+    rm -rf /tmp/bgutil.zip /tmp/bgutil-release && \
+    echo "✅ bgutil generate_once.js installed from official release"
 
 # Copy app source
 COPY . .
