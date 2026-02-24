@@ -44,9 +44,9 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  // Use YOUTUBE_CLIENT env var to override; default lets yt-dlp pick best client
+  // Use YOUTUBE_CLIENT env var to override; web,tv avoids PO Token requirement in most cases.
   // bgutil-ytdlp-pot-provider plugin auto-provides PoToken for whichever client is chosen
-  return process.env.YOUTUBE_CLIENT || 'default';
+  return process.env.YOUTUBE_CLIENT || 'web,tv';
 }
 
 // Returns extractor-args for YouTube — using native yt-dlp js_engine
@@ -177,7 +177,17 @@ function spawnYtDlp(args, options = {}) {
 
   // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
   const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
-  const env = { ...process.env, ...(options.env || {}), PATH: pathEnv };
+
+  // Provide GetPOT with local script path if docker symlink is missing
+  const potPath = path.join(__dirname, '../bgutil-server/build');
+  const env = {
+    ...process.env,
+    ...(options.env || {}),
+    PATH: pathEnv,
+    // Add env vars if bgutil supports reading location via env (it usually defaults to /root/bgutil... or cwd)
+    BGUTIL_YTDLP_POT_PROVIDER_SERVER_BUILD_DIR: potPath,
+    POT_PROVIDER_DIR: potPath
+  };
 
   return spawn(cmd, [...pre, ...args], { ...options, env });
 }

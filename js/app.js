@@ -73,7 +73,9 @@ async function handleSubmit() {
         const data = await res.json();
 
         if (!res.ok) {
-            showError(data.error || 'Failed to fetch video info. Please check the URL and try again.');
+            let errorMsg = typeof data.error === 'string' ? data.error :
+                (data.error ? JSON.stringify(data.error) : JSON.stringify(data) || 'Failed to fetch video info. Please check the URL and try again.');
+            showError(errorMsg);
             return;
         }
 
