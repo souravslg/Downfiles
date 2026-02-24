@@ -401,6 +401,7 @@ app.post('/api/info', async (req, res) => {
   proc.on('close', async (code) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
     if (code !== 0) {
+      let cobaltSucceeded = false;
       // Try cobalt.tools fallback for YouTube before returning error
       if (isYouTube) {
         console.log('[INFO] yt-dlp failed, trying cobalt.tools fallback...');
@@ -421,11 +422,14 @@ app.post('/api/info', async (req, res) => {
               best_format: 'cobalt_max',
               via_cobalt: true,
             });
+            cobaltSucceeded = true;
           }
         } catch (cobaltErr) {
           console.error('[INFO] cobalt fallback failed:', cobaltErr.message);
         }
       }
+
+      if (cobaltSucceeded) return; // Prevent sending error response if we already sent JSON
 
       let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
       if (errOutput.includes('DRM protected')) {
@@ -433,7 +437,7 @@ app.post('/api/info', async (req, res) => {
       } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
         friendly = 'This video is private or requires sign-in.';
       } else if (errOutput.includes('Requested format is not available')) {
-        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible (Bot verification issue).';
       } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
         friendly = 'This video is unavailable in your region or has been removed.';
       }
