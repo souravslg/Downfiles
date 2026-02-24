@@ -44,21 +44,18 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
+  // Use YOUTUBE_CLIENT env var to override; default lets yt-dlp pick best client
+  // bgutil-ytdlp-pot-provider plugin auto-provides PoToken for whichever client is chosen
   return process.env.YOUTUBE_CLIENT || 'default';
 }
 
-// po_token_js_provider tells yt-dlp to use Node.js to evaluate YouTube's bot-protection
-// challenges natively. 
+// Returns extractor-args for YouTube — with bgutil plugin active, no need to force client
 function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  const jsProvider = 'youtube:po_token_js_provider=node'; // yt-dlp now supports raw engine names (node/bun/deno) 
-
-  if (!client || client === 'default') {
-    return ['--extractor-args', jsProvider];
-  }
-  return ['--extractor-args', `youtube:player_client=${client};po_token_js_provider=node`];
+  if (client === 'default') return [];
+  return ['--extractor-args', `youtube:player_client=${client}`];
 }
 
 
@@ -170,12 +167,7 @@ function spawnYtDlp(args, options = {}) {
   const parts = YT_DLP_CMD.split(' ');
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
-
-  // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
-  const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
-  const env = { ...process.env, ...(options.env || {}), PATH: pathEnv };
-
-  return spawn(cmd, [...pre, ...args], { ...options, env });
+  return spawn(cmd, [...pre, ...args], options);
 }
 
 // Build a safe format string depending on ffmpeg availability
@@ -229,9 +221,8 @@ app.get('/api/yt-debug', (req, res) => {
   const cookiesArr = getCookiesArgs();
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
 
-  const isFormats = !!req.query.formats;
   const dbgArgs = [
-    ...(isFormats ? ['-F'] : ['--dump-json', '--no-playlist', '--no-warnings', '--verbose']),
+    '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     ...getExtractorArgs(url),
@@ -255,7 +246,7 @@ app.get('/api/yt-debug', (req, res) => {
     clientUsed: playerClient,
     ytDlpVersion: ytDlpVersion,
     cookiesTmpPath: COOKIES_TMP_PATH,
-    stderr: err.slice(0, 5000), stdout: out.slice(0, 10000), stdout_len: out.length
+    stderr: err.slice(0, 5000), stdout_len: out.length
   }));
 });
 
@@ -711,22 +702,6 @@ app.get('/api/status/:jobId', (req, res) => {
   res.json(job);
 });
 
-// GET /api/test-js - Debug JS engines
-app.get('/api/test-js', (req, res) => {
-  try {
-    const { execSync } = require('child_process');
-    const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
-    const env = { ...process.env, PATH: pathEnv };
-    const bun = execSync('bun --version', { env }).toString().trim();
-    const node = execSync('node --version', { env }).toString().trim();
-    const whichBun = execSync('which bun', { env }).toString().trim();
-    const whichNode = execSync('which node', { env }).toString().trim();
-    res.json({ bun, node, whichBun, whichNode, path: pathEnv });
-  } catch (e) {
-    res.status(500).json({ error: e.message, stack: e.stack });
-  }
-});
-
 // GET /api/sysinfo - Debug environment
 app.get('/api/sysinfo', (req, res) => {
   try {
@@ -747,14 +722,10 @@ app.get('/api/sysinfo', (req, res) => {
     let bgutilRun = 'not tested';
     if (bgutilExists) {
       try {
-        const { execFileSync } = require('child_process');
-        bgutilRun = execFileSync('node', [bgutilScript, '--version'], { encoding: 'utf8', stderr: 'pipe' }).trim().slice(0, 200);
-      } catch (e) {
-        // e.stdout + e.stderr gives the actual crash output
-        bgutilRun = 'STDOUT:' + (e.stdout || '').slice(0, 200) + ' STDERR:' + (e.stderr || '').slice(0, 500);
-      }
+        bgutilRun = require('child_process').execSync(`node ${bgutilScript} --version 2>&1`).toString().trim().slice(0, 100);
+      } catch (e) { bgutilRun = 'ERR:' + e.message.slice(0, 150); }
     }
-    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, rapidApiSet: !!process.env.RAPID_API_KEY, cobaltApiSet: !!process.env.COBALT_API_URL, cwd: process.cwd(), cmd: YT_DLP_CMD });
+    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, cwd: process.cwd(), cmd: YT_DLP_CMD });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
