@@ -1,11 +1,9 @@
 [providers]
   node = {}
+  python = {}
 
 [phases.setup]
-  nixPkgs = ["...", "ffmpeg", "python3", "wget"]
-
-[phases.install]
-  cmds = ["npm install", "wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O yt-dlp", "chmod +x yt-dlp"]
+  nixPkgs = ["ffmpeg"]
 
 [start]
-  cmd = "node server/index.js"
+  cmd = "npm run start"
