@@ -55,10 +55,13 @@ function getExtractorArgs(url) {
   if (!isYouTube) return [];
   const client = getYouTubeClient();
 
+  // Forcing Node.js to solve JS challenges (fixes datacenter IP block)
+  const baseArgs = ['--js-runtimes', 'node'];
+
   if (client === 'default') {
-    return [];
+    return baseArgs;
   }
-  return ['--extractor-args', `youtube:player_client=${client}`];
+  return [...baseArgs, '--extractor-args', `youtube:player_client=${client}`];
 }
 
 
