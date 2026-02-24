@@ -44,9 +44,9 @@ function getCookiesArgs() {
 }
 
 function getYouTubeClient() {
-  // Use YOUTUBE_CLIENT env var to override; web,tv avoids PO Token requirement in most cases.
+  // Use YOUTUBE_CLIENT env var to override; default lets yt-dlp select the best clients
   // bgutil-ytdlp-pot-provider plugin auto-provides PoToken for whichever client is chosen
-  return process.env.YOUTUBE_CLIENT || 'web,tv';
+  return process.env.YOUTUBE_CLIENT || 'default';
 }
 
 // Returns extractor-args for YouTube — using native yt-dlp js_engine
