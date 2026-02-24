@@ -176,7 +176,9 @@ function spawnYtDlp(args, options = {}) {
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
 
   // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
-  const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
+  // Use process.execPath to get the absolute path to the current Node executable
+  const nodeDir = require('path').dirname(process.execPath);
+  const pathEnv = [nodeDir, process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
 
   // Provide GetPOT with local script path if docker symlink is missing
   const potPath = path.join(__dirname, '../bgutil-server/build');

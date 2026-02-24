@@ -1,0 +1,27 @@
+# Railway Nixpacks Configuration
+# Ensures python, nodejs, and ffmpeg are cleanly installed and available.
+
+[providers]
+  node = true
+  python = true
+
+[phases.setup]
+  nixPkgs = ["ffmpeg", "python311", "nodejs_20"]
+
+[phases.install]
+  cmds = [
+    "npm install --production",
+    "python -m venv /opt/venv",
+    ". /opt/venv/bin/activate && pip install -U --pre pip",
+    ". /opt/venv/bin/activate && pip install -U --pre yt-dlp curl_cffi==0.7.4 yt-dlp-get-pot bgutil-ytdlp-pot-provider",
+    "cd bgutil-server && npm install && npx tsc",
+    # Link generate_once.js for bgutil
+    "mkdir -p /root/bgutil-ytdlp-pot-provider/server/build",
+    "ln -sf /app/bgutil-server/build/generate_once.js /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js",
+    "mkdir -p /app/bgutil-ytdlp-pot-provider/server/build",
+    "ln -sf /app/bgutil-server/build/generate_once.js /app/bgutil-ytdlp-pot-provider/server/build/generate_once.js"
+  ]
+
+[start]
+  # Inject the venv into PATH so finding yt-dlp works correctly
+  cmd = "PATH=/opt/venv/bin:$PATH npm start"
