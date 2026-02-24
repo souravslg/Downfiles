@@ -56,12 +56,18 @@ function getExtractorArgs(url, clientOverride = null) {
   const client = clientOverride || getYouTubeClient();
 
   // Forcing Node.js to solve JS challenges (fixes datacenter IP block)
+  // And providing the bgutil PO Token script to bypass SABR streams.
+  const scriptPath = require('path').resolve(__dirname, '../bgutil-server/build/generate_once.js');
   const baseArgs = ['--js-runtimes', 'node'];
 
   if (client === 'default') {
-    return baseArgs;
+    return [...baseArgs, '--extractor-args', `pot:bgutil:script_path=${scriptPath}`];
   }
-  return [...baseArgs, '--extractor-args', `youtube:player_client=${client}`];
+  return [
+    ...baseArgs,
+    '--extractor-args',
+    `youtube:player_client=${client};pot:bgutil:script_path=${scriptPath}`
+  ];
 }
 
 
