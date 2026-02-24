@@ -6,22 +6,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the latest yt-dlp and the essential PO Token Providers to bypass Bot Verification
-RUN pip3 install --no-cache-dir -U --pre yt-dlp curl_cffi==0.7.4 yt-dlp-get-pot bgutil-ytdlp-pot-provider
+# Install the latest yt-dlp
+RUN pip3 install --no-cache-dir -U --pre yt-dlp
 
 # Set working directory to the API server
 WORKDIR /app
 COPY . .
-
-# Compile the bgutil-server for Native JS challenge solving
-WORKDIR /app/bgutil-server
-RUN npm install && npx tsc
-
-# Symlink the built generator script into the root path that yt-dlp expects
-RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
-    ln -s /app/bgutil-server/build/generate_once.js /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js
-
-WORKDIR /app
 
 # Install main Node dependencies
 RUN npm install --omit=dev

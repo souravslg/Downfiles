@@ -45,7 +45,7 @@ function getCookiesArgs() {
 
 function getYouTubeClient() {
   // Use YOUTUBE_CLIENT env var to override; default lets yt-dlp select the best clients
-  // bgutil-ytdlp-pot-provider plugin auto-provides PoToken for whichever client is chosen
+  // Natively evaluated by Node.js integration
   return process.env.YOUTUBE_CLIENT || 'default';
 }
 
@@ -55,8 +55,7 @@ function getExtractorArgs(url, clientOverride = null) {
   if (!isYouTube) return [];
   const client = clientOverride || getYouTubeClient();
 
-  // Forcing Node.js to solve JS challenges (fixes datacenter IP block)
-  // bgutil PO Token script is automatically found via Dockerfile symlink
+  // Forcing Node.js to natively solve all JS signatures internally
   const baseArgs = ['--js-runtimes', 'node'];
 
   if (client === 'default') {
