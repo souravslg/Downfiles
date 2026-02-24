@@ -724,8 +724,13 @@ app.get('/api/sysinfo', (req, res) => {
         `python3 -c "import subprocess; r=subprocess.run(['node','-e','process.stdout.write(String(40+2))'], capture_output=True, text=True, timeout=5); print(r.stdout.strip() or 'empty: '+r.stderr[:100])"`
       ).toString().trim();
     } catch (e) { pythonCanSpawnNode = 'ERR:' + e.message.slice(0, 150); }
-    // Check native yt-dlp js engine integration
-    const ytDlpPythonNode = 'yt-dlp handles js directly now';
+    // Check native yt-dlp js engine integration exactly the way yt-dlp does it internally
+    let ytDlpPythonNode = 'untested';
+    try {
+      ytDlpPythonNode = require('child_process').execSync(
+        `python3 -c "from yt_dlp.utils._jsruntime import NodeJsRuntime; print(NodeJsRuntime()._info())"`
+      ).toString().trim();
+    } catch (e) { ytDlpPythonNode = 'ERR: ' + e.message.slice(0, 500); }
 
     res.json({
       nodeV,
