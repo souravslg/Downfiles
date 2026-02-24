@@ -109,7 +109,7 @@ const COBALT_FORMATS = [
 // In-memory job store
 const jobs = {};
 
-// Find yt-dlp executable — tries yt-dlp → python -m yt_dlp → python3 -m yt_dlp
+// Find yt-dlp executable
 const { execSync } = require('child_process');
 let YT_DLP_CMD = 'yt-dlp';
 try {
@@ -117,16 +117,24 @@ try {
   console.log('yt-dlp found in PATH');
 } catch {
   try {
-    execSync('python -m yt_dlp --version', { stdio: 'ignore' });
-    YT_DLP_CMD = 'python -m yt_dlp';
-    console.log('yt-dlp found via python -m yt_dlp');
+    // Check if we downloaded it locally (via nixpacks on Railway)
+    const localYtDlp = path.join(__dirname, '..', 'yt-dlp');
+    execSync(`${localYtDlp} --version`, { stdio: 'ignore' });
+    YT_DLP_CMD = localYtDlp;
+    console.log('yt-dlp found locally at', localYtDlp);
   } catch {
     try {
-      execSync('python3 -m yt_dlp --version', { stdio: 'ignore' });
-      YT_DLP_CMD = 'python3 -m yt_dlp';
-      console.log('yt-dlp found via python3 -m yt_dlp');
+      execSync('python -m yt_dlp --version', { stdio: 'ignore' });
+      YT_DLP_CMD = 'python -m yt_dlp';
+      console.log('yt-dlp found via python -m yt_dlp');
     } catch {
-      console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+      try {
+        execSync('python3 -m yt_dlp --version', { stdio: 'ignore' });
+        YT_DLP_CMD = 'python3 -m yt_dlp';
+        console.log('yt-dlp found via python3 -m yt_dlp');
+      } catch {
+        console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+      }
     }
   }
 }

@@ -2,7 +2,10 @@
   node = {}
 
 [phases.setup]
-  nixPkgs = ["...", "ffmpeg", "yt-dlp", "python3"]
+  nixPkgs = ["...", "ffmpeg", "python3"]
+
+[phases.install_ytdlp]
+  cmds = ["wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O yt-dlp", "chmod a+rx yt-dlp"]
 
 [phases.install]
   cmds = ["npm install"]
