@@ -60,9 +60,9 @@ function getExtractorArgs(url, clientOverride = null) {
   const baseArgs = ['--js-runtimes', 'node'];
 
   if (client === 'default') {
-    return [...baseArgs, '--extractor-args', 'youtube:player_client=web,ios;po_token=web+ios'];
+    return [...baseArgs, '--extractor-args', 'youtube:player_client=ios,tv,mweb'];
   }
-  return [...baseArgs, '--extractor-args', `youtube:player_client=${client};po_token=web+ios`];
+  return [...baseArgs, '--extractor-args', `youtube:player_client=${client}`];
 }
 
 
