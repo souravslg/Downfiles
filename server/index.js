@@ -446,7 +446,7 @@ app.post('/api/info', async (req, res) => {
       } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
         friendly = 'This video is private or requires sign-in.';
       } else if (errOutput.includes('Requested format is not available')) {
-        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible (Bot verification issue).';
+        friendly = 'Could not fetch YouTube format due to Bot Verification Block. Try updating your cookies or using client=web,ios.';
       } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
         friendly = 'This video is unavailable in your region or has been removed.';
       }
