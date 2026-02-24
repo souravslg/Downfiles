@@ -446,7 +446,7 @@ app.post('/api/info', async (req, res) => {
       return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
     }
 
-    const isYouTube = (info.extractor_key || '').toLowerCase().includes('youtube');
+    const isYouTubeExtractor = (info.extractor_key || '').toLowerCase().includes('youtube');
 
     const formats = (info.formats || [])
       .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
