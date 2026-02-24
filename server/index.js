@@ -54,12 +54,12 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  const scriptPath = 'pot:bgutil:script_path=/app/bgutil/generate_once.js';
+  const potArgs = ['--extractor-args', 'pot:bgutil:script_path=/usr/src/bgutil/generate_once.js'];
 
   if (client === 'default') {
-    return ['--extractor-args', scriptPath];
+    return potArgs;
   }
-  return ['--extractor-args', `youtube:player_client=${client};${scriptPath}`];
+  return ['--extractor-args', `youtube:player_client=${client}`, ...potArgs];
 }
 
 
@@ -726,7 +726,7 @@ app.get('/api/sysinfo', (req, res) => {
       ).toString().trim();
     } catch (e) { pythonCanSpawnNode = 'ERR:' + e.message.slice(0, 150); }
     // Check bgutil generate_once.js
-    const bgutilScript = '/app/bgutil/generate_once.js';
+    const bgutilScript = '/usr/src/bgutil/generate_once.js';
     const bgutilExists = fs.existsSync(bgutilScript);
     let bgutilRun = 'not tested';
     if (bgutilExists) {
