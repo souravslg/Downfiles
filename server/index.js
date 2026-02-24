@@ -272,7 +272,7 @@ app.post('/api/info', async (req, res) => {
 
   // ── RapidAPI YouTube Fallback ──
   // Bypasses datacenter blocks cleanly
-  if (isYouTube) {
+  if (isYouTube && process.env.RAPID_API_KEY) {
     try {
       console.log('[INFO] YouTube detected — trying RapidAPI fallback...');
       const rapidUrl = `https://youtube-media-downloader.p.rapidapi.com/v2/video/details?videoId=${videoId}`;
@@ -280,7 +280,7 @@ app.post('/api/info', async (req, res) => {
         method: 'GET',
         headers: {
           'x-rapidapi-host': 'youtube-media-downloader.p.rapidapi.com',
-          'x-rapidapi-key': '104f93455emsha4a8e06a6af7a46p155429jsn80530d8ea7a9'
+          'x-rapidapi-key': process.env.RAPID_API_KEY
         },
         signal: AbortSignal.timeout(10000)
       });
@@ -479,7 +479,7 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
       const apiRes = await fetch(rapidUrl, {
         headers: {
           'x-rapidapi-host': 'youtube-media-downloader.p.rapidapi.com',
-          'x-rapidapi-key': '104f93455emsha4a8e06a6af7a46p155429jsn80530d8ea7a9'
+          'x-rapidapi-key': process.env.RAPID_API_KEY || ''
         }
       });
       const data = await apiRes.json();
