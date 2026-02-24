@@ -50,10 +50,10 @@ function getYouTubeClient() {
 }
 
 // Returns extractor-args for YouTube — using native yt-dlp js_engine
-function getExtractorArgs(url) {
+function getExtractorArgs(url, clientOverride = null) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
-  const client = getYouTubeClient();
+  const client = clientOverride || getYouTubeClient();
 
   // Forcing Node.js to solve JS challenges (fixes datacenter IP block)
   const baseArgs = ['--js-runtimes', 'node'];
@@ -236,7 +236,7 @@ app.get('/api/yt-debug', (req, res) => {
     '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    ...getExtractorArgs(url),
+    ...getExtractorArgs(url, playerClient),
     '--rm-cache-dir',
     '--socket-timeout', '20',
     ...cookiesArr,
