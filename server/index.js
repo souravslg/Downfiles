@@ -229,8 +229,8 @@ function setDownloadFilename(res, title, ext) {
 app.get('/api/yt-debug', (req, res) => {
   const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
   const playerClient = req.query.client || getYouTubeClient();
-  const cookiesArr = getCookiesArgs();
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+  const cookiesArr = req.query.nocookies ? [] : getCookiesArgs();
+  const hasCookies = req.query.nocookies ? false : fs.existsSync(COOKIES_TMP_PATH);
 
   const isFormatList = !!req.query.F;
 
