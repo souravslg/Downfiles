@@ -422,6 +422,8 @@ app.post('/api/info', async (req, res) => {
   proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
   proc.on('close', async (code) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
+    if (res.headersSent) return; // Prevent setting headers again if spawn error already did
+
     if (code !== 0) {
       let cobaltSucceeded = false;
       // Try cobalt.tools fallback for YouTube before returning error
