@@ -25,6 +25,10 @@ COPY . .
 WORKDIR /app/bgutil-server
 RUN npm install && npx tsc
 
+# Create default path expected by GetPOT plugin to avoid yt-dlp extractor-args syntax hell
+RUN mkdir -p /root/bgutil-ytdlp-pot-provider/server/build && \
+    ln -s /app/bgutil-server/build/generate_once.js /root/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+
 WORKDIR /app
 
 # Start the server
