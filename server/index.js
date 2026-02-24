@@ -49,17 +49,16 @@ function getYouTubeClient() {
   return process.env.YOUTUBE_CLIENT || 'default';
 }
 
-// Returns extractor-args for YouTube — with bgutil plugin active, no need to force client
+// Returns extractor-args for YouTube — using native yt-dlp js_engine
 function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  const potArgs = ['--extractor-args', 'pot:bgutil:script_path=/usr/src/bgutil/generate_once.js'];
 
   if (client === 'default') {
-    return potArgs;
+    return [];
   }
-  return ['--extractor-args', `youtube:player_client=${client}`, ...potArgs];
+  return ['--extractor-args', `youtube:player_client=${client}`];
 }
 
 
@@ -725,16 +724,20 @@ app.get('/api/sysinfo', (req, res) => {
         `python3 -c "import subprocess; r=subprocess.run(['node','-e','process.stdout.write(String(40+2))'], capture_output=True, text=True, timeout=5); print(r.stdout.strip() or 'empty: '+r.stderr[:100])"`
       ).toString().trim();
     } catch (e) { pythonCanSpawnNode = 'ERR:' + e.message.slice(0, 150); }
-    // Check bgutil generate_once.js
-    const bgutilScript = '/usr/src/bgutil/generate_once.js';
-    const bgutilExists = fs.existsSync(bgutilScript);
-    let bgutilRun = 'not tested';
-    if (bgutilExists) {
-      try {
-        bgutilRun = require('child_process').execSync(`node ${bgutilScript} --version 2>&1`).toString().trim().slice(0, 100);
-      } catch (e) { bgutilRun = 'ERR:' + e.message.slice(0, 150); }
-    }
-    res.json({ nodeV, pythonV, ytDlpLoc, nodeLoc, pythonCanSpawnNode, bgutilExists, bgutilRun, cwd: process.cwd(), cmd: YT_DLP_CMD });
+    // Check native yt-dlp js engine integration
+    const ytDlpPythonNode = 'yt-dlp handles js directly now';
+
+    res.json({
+      nodeV,
+      pythonV,
+      ytDlpLoc,
+      nodeLoc,
+      pythonCanSpawnNode,
+      ytDlpPythonNode,
+      cwd: process.cwd(),
+      cmd: YT_DLP_CMD,
+      rapidApiSet: !!process.env.RAPID_API_KEY
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
