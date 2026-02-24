@@ -260,6 +260,7 @@ app.get('/api/yt-debug', (req, res) => {
   ];
   let out = '', err = '';
   const p2 = spawnYtDlp(dbgArgs);
+  p2.on('error', (err) => { err += `\n[SPAWN ERROR] ${err.message}`; console.error('yt-dlp spawn error', err); });
   p2.stdout.on('data', d => { out += d; });
   p2.stderr.on('data', d => { err += d; });
   let ytDlpVersion = 'unknown';
@@ -398,6 +399,10 @@ app.post('/api/info', async (req, res) => {
 
   let output = '', errOutput = '';
   const proc = spawnYtDlp(args);
+  proc.on('error', (err) => {
+    console.error('[INFO] yt-dlp spawn error:', err);
+    if (!res.headersSent) res.status(500).json({ error: 'yt-dlp failed to start or is not installed. Contact admin.', details: err.message });
+  });
   proc.stdout.on('data', d => { output += d.toString(); });
   proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
   proc.on('close', async (code) => {
@@ -592,6 +597,10 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   console.log(`  tmp: ${tmpFile}`);
 
   const proc = spawnYtDlp(args);
+  proc.on('error', (err) => {
+    console.error('[DOWNLOAD] yt-dlp spawn error:', err);
+    if (!res.headersSent) res.status(500).send('Download failed: yt-dlp not found or failed to start.');
+  });
   let errOutput = '';
   proc.stderr.on('data', d => {
     errOutput += d.toString();
@@ -772,6 +781,6 @@ app.get('/api/sysinfo', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 All In One Downloader server running at http://localhost:${PORT}\n`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀 All In One Downloader server running at http://0.0.0.0:${PORT}\n`);
 });
