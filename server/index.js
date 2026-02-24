@@ -119,8 +119,8 @@ try {
   try {
     // Check if we downloaded it locally (via nixpacks on Railway)
     const localYtDlp = path.join(__dirname, '..', 'yt-dlp');
-    execSync(`${localYtDlp} --version`, { stdio: 'ignore' });
-    YT_DLP_CMD = localYtDlp;
+    execSync(`python3 ${localYtDlp} --version`, { stdio: 'ignore' });
+    YT_DLP_CMD = `python3 ${localYtDlp}`;
     console.log('yt-dlp found locally at', localYtDlp);
   } catch {
     try {
@@ -133,7 +133,14 @@ try {
         YT_DLP_CMD = 'python3 -m yt_dlp';
         console.log('yt-dlp found via python3 -m yt_dlp');
       } catch {
-        console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+        // Fallback to directly executing the downloaded binary just in case python3 failed
+        const localYtDlp = path.join(__dirname, '..', 'yt-dlp');
+        if (require('fs').existsSync(localYtDlp)) {
+          YT_DLP_CMD = localYtDlp;
+          console.log('Fallback: yt-dlp binary exists at', localYtDlp);
+        } else {
+          console.warn('WARNING: yt-dlp not found! Install with: pip install yt-dlp');
+        }
       }
     }
   }
