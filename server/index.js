@@ -232,8 +232,11 @@ app.get('/api/yt-debug', (req, res) => {
   const cookiesArr = getCookiesArgs();
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
 
+  const isFormatList = !!req.query.F;
+
   const dbgArgs = [
-    '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
+    isFormatList ? '-F' : '--dump-json',
+    '--no-playlist', '--no-warnings', '--verbose',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     ...getExtractorArgs(url, playerClient),
