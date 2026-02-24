@@ -54,8 +54,12 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  if (client === 'default') return [];
-  return ['--extractor-args', `youtube:player_client=${client}`];
+  const scriptPath = 'pot:bgutil:script_path=/app/bgutil/generate_once.js';
+
+  if (client === 'default') {
+    return ['--extractor-args', scriptPath];
+  }
+  return ['--extractor-args', `youtube:player_client=${client};${scriptPath}`];
 }
 
 
@@ -167,7 +171,12 @@ function spawnYtDlp(args, options = {}) {
   const parts = YT_DLP_CMD.split(' ');
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
-  return spawn(cmd, [...pre, ...args], options);
+
+  // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
+  const pathEnv = [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
+  const env = { ...process.env, ...(options.env || {}), PATH: pathEnv };
+
+  return spawn(cmd, [...pre, ...args], { ...options, env });
 }
 
 // Build a safe format string depending on ffmpeg availability
@@ -717,7 +726,7 @@ app.get('/api/sysinfo', (req, res) => {
       ).toString().trim();
     } catch (e) { pythonCanSpawnNode = 'ERR:' + e.message.slice(0, 150); }
     // Check bgutil generate_once.js
-    const bgutilScript = '/root/bgutil-ytdlp-pot-provider/server/build/generate_once.js';
+    const bgutilScript = '/app/bgutil/generate_once.js';
     const bgutilExists = fs.existsSync(bgutilScript);
     let bgutilRun = 'not tested';
     if (bgutilExists) {
