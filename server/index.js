@@ -29,18 +29,58 @@ const os = require('os');
 const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
 
 function getCookiesArgs() {
-  if (process.env.YOUTUBE_COOKIES) {
+  let base64Cookies = (process.env.YOUTUBE_COOKIES || '').trim().replace(/^["']|["']$/g, '');
+  if (!base64Cookies) {
+    for (let i = 1; i <= 10; i++) {
+      let chunk = process.env[`YOUTUBE_COOKIES_${i}`];
+      if (chunk) {
+        chunk = chunk.trim().replace(/^["']|["']$/g, '');
+        if (chunk.startsWith('=')) chunk = chunk.substring(1);
+        base64Cookies += chunk;
+      } else {
+        break;
+      }
+    }
+  }
+
+  if (base64Cookies) {
     try {
-      const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
-      fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
-      return ['--cookies', COOKIES_TMP_PATH];
+      const cookieString = Buffer.from(base64Cookies, 'base64').toString('utf-8');
+      if (cookieString.trim().startsWith('# Netscape HTTP Cookie File')) {
+        fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
+        return ['--cookies', COOKIES_TMP_PATH];
+      } else {
+        console.warn('[WARN] YOUTUBE_COOKIES is corrupted or not in Netscape format. Ignoring.');
+      }
     } catch (err) {
       console.error('[ERROR] Failed to write YOUTUBE_COOKIES dynamically:', err.message);
     }
   } else if (fs.existsSync(COOKIES_TMP_PATH)) {
-    return ['--cookies', COOKIES_TMP_PATH];
+    const localCookies = fs.readFileSync(COOKIES_TMP_PATH, 'utf-8');
+    if (localCookies.startsWith('# Netscape HTTP Cookie File')) {
+      return ['--cookies', COOKIES_TMP_PATH];
+    }
   }
   return [];
+}
+
+let cachedProxies = [];
+let lastProxyFetch = 0;
+
+async function getRandomProxy() {
+  if (Date.now() - lastProxyFetch > 1000 * 60 * 60 || cachedProxies.length === 0) {
+    try {
+      console.log('[INFO] Fetching fresh proxies...');
+      const req = await fetch('https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt', { signal: AbortSignal.timeout(5000) });
+      const txt = await req.text();
+      cachedProxies = txt.split('\n').map(l => l.trim()).filter(l => l.includes(':'));
+      lastProxyFetch = Date.now();
+    } catch (err) {
+      console.error('[WARN] Failed to fetch proxy list:', err.message);
+    }
+  }
+  if (cachedProxies.length === 0) return null;
+  return 'http://' + cachedProxies[Math.floor(Math.random() * cachedProxies.length)];
 }
 
 function getYouTubeClient() {
@@ -50,19 +90,13 @@ function getYouTubeClient() {
   return process.env.YOUTUBE_CLIENT || 'default';
 }
 
-function getExtractorArgs(url, clientOverride = null) {
+// Returns extractor-args array only when a non-default client is set
+function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
-  const client = clientOverride || getYouTubeClient();
-
-  // Forcing Node.js to natively solve all JS signatures internally
-  const baseArgs = [
-    '--js-runtimes', 'node',
-    '--extractor-args', 'youtube:player_client=' + client,
-    '--extractor-args', 'youtube:po_token_provider=webpo_cffi'
-  ];
-
-  return baseArgs;
+  const client = getYouTubeClient();
+  if (!client || client === 'default') return [];
+  return ['--extractor-args', 'youtube:player_client=' + client];
 }
 
 
@@ -147,17 +181,17 @@ function buildFormatArg(format_id, isAudio) {
     // Specific format selected by user — always add generous fallbacks in case
     // the exact format_id is unavailable on this server's IP/client combination
     if (HAS_FFMPEG) {
-      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best`;
+      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}/bestvideo[ext=mp4][height<=360]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[vcodec!=none][height<=360]/best`;
     }
-    return `${format_id}/best[ext=mp4][vcodec!=none]/best[vcodec!=none]/best`;
+    return `${format_id}/best[ext=mp4][vcodec!=none][height<=360]/best[vcodec!=none][height<=360]/best`;
   }
   // Auto mode
   if (HAS_FFMPEG) {
     // Prefer mp4 container with merged streams, fallback to any best video+audio, then best single file
-    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best';
+    return 'bestvideo[ext=mp4][height<=360]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[vcodec!=none][height<=360]/best';
   }
   // No ffmpeg — use pre-merged mp4 streams only (avoids webm), demand video codec
-  return 'best[ext=mp4][vcodec!=none]/best[height<=720][vcodec!=none]/best[vcodec!=none]/best';
+  return 'best[ext=mp4][vcodec!=none][height<=360]/best[height<=360][vcodec!=none]/best[vcodec!=none]/best';
 }
 
 // Safe filename sanitiser
@@ -248,9 +282,18 @@ app.post('/api/info', async (req, res) => {
     ...getExtractorArgs(url),
     '--rm-cache-dir',
     '--socket-timeout', '30',
-    ...getCookiesArgs(),
-    url
+    ...getCookiesArgs()
   ];
+
+  if (isYouTube) {
+    const proxy = await getRandomProxy();
+    if (proxy) {
+      args.push('--proxy', proxy);
+      console.log(`[INFO] Using Proxy: ${proxy}`);
+    }
+  }
+
+  args.push(url);
 
   let output = '', errOutput = '';
   const proc = spawnYtDlp(args);
@@ -326,7 +369,7 @@ app.post('/api/info', async (req, res) => {
 });
 
 // Download to a temp file, then stream to client.
-function streamDownload(res, req, url, format_id, isAudio, title) {
+async function streamDownload(res, req, url, format_id, isAudio, title) {
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
@@ -343,9 +386,18 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
     '--rm-cache-dir',
     '--socket-timeout', '60',
     '--no-warnings',
-    ...getCookiesArgs(),
-    '-o', tmpFile
+    ...getCookiesArgs()
   ];
+
+  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+    const proxy = await getRandomProxy();
+    if (proxy) {
+      args.push('--proxy', proxy);
+      console.log(`[INFO] Using Proxy: ${proxy}`);
+    }
+  }
+
+  args.push('-o', tmpFile);
 
   if (isAudio) {
     args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
@@ -426,22 +478,22 @@ function streamDownload(res, req, url, format_id, isAudio, title) {
 }
 
 // GET /api/download?url=...&format_id=...&audio_only=1&title=...
-app.get('/api/download', (req, res) => {
+app.get('/api/download', async (req, res) => {
   const { url, format_id, audio_only, title } = req.query;
   if (!url) return res.status(400).send('URL is required');
   const isAudio = audio_only === '1' || audio_only === 'true';
-  streamDownload(res, req, url, format_id, isAudio, title);
+  await streamDownload(res, req, url, format_id, isAudio, title);
 });
 
 // POST /api/download - accepts JSON body as well
-app.post('/api/download', (req, res) => {
+app.post('/api/download', async (req, res) => {
   const url = req.body?.url;
   const format_id = req.body?.format_id;
   const audio_only = req.body?.audio_only;
   const title = req.body?.title;
   if (!url) return res.status(400).json({ error: 'URL is required' });
   const isAudio = audio_only === '1' || audio_only === 'true' || audio_only === true;
-  streamDownload(res, req, url, format_id, isAudio, title);
+  await streamDownload(res, req, url, format_id, isAudio, title);
 });
 
 // POST /api/download-link - Get download link (for quality picker)
@@ -449,9 +501,11 @@ app.post('/api/download-link', (req, res) => {
   const { url, format_id, audio_only } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
-  const jobId = uuidv4();
-  jobs[jobId] = { status: 'processing', progress: 0, url, format_id, audio_only };
-  res.json({ jobId, downloadUrl: `/api/stream/${jobId}` });
+  const directUrl = `${req.protocol}://${req.get('host')}/api/download?url=${encodeURIComponent(url)}` +
+    (format_id ? `&format_id=${encodeURIComponent(format_id)}` : '') +
+    (audio_only ? `&audio_only=1` : '');
+
+  res.json({ download_url: directUrl });
 });
 
 // GET /api/stream/:jobId - Stream by job
