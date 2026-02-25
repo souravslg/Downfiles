@@ -29,9 +29,20 @@ const os = require('os');
 const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
 
 function getCookiesArgs() {
-  if (process.env.YOUTUBE_COOKIES) {
+  let base64Cookies = process.env.YOUTUBE_COOKIES || '';
+  if (!base64Cookies) {
+    for (let i = 1; i <= 10; i++) {
+      if (process.env[`YOUTUBE_COOKIES_${i}`]) {
+        base64Cookies += process.env[`YOUTUBE_COOKIES_${i}`];
+      } else {
+        break;
+      }
+    }
+  }
+
+  if (base64Cookies) {
     try {
-      const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
+      const cookieString = Buffer.from(base64Cookies, 'base64').toString('utf-8');
       if (cookieString.startsWith('# Netscape HTTP Cookie File')) {
         fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
         return ['--cookies', COOKIES_TMP_PATH];
