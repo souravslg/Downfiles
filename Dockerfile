@@ -13,10 +13,9 @@ RUN pip3 install --no-cache-dir -U --pre yt-dlp bgutil-ytdlp-pot-provider
 WORKDIR /app
 COPY . .
 
-# Build bgutil-server
+# Install bgutil-server production dependencies only
 WORKDIR /app/bgutil-server
-RUN npm ci --no-audit --no-fund
-RUN npx tsc
+RUN npm ci --omit=dev --no-audit --no-fund
 
 WORKDIR /app
 
