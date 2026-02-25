@@ -29,51 +29,27 @@ const os = require('os');
 const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
 
 function getCookiesArgs() {
-  let base64Cookies = (process.env.YOUTUBE_COOKIES || '').trim().replace(/^["']|["']$/g, '');
-  if (!base64Cookies) {
-    for (let i = 1; i <= 10; i++) {
-      let chunk = process.env[`YOUTUBE_COOKIES_${i}`];
-      if (chunk) {
-        chunk = chunk.trim().replace(/^["']|["']$/g, '');
-        if (chunk.startsWith('=')) {
-          chunk = chunk.substring(1);
-        }
-        base64Cookies += chunk;
-      } else {
-        break;
-      }
-    }
-  }
-
-  if (base64Cookies) {
+  if (process.env.YOUTUBE_COOKIES) {
     try {
-      const cookieString = Buffer.from(base64Cookies, 'base64').toString('utf-8');
-      if (cookieString.trim().startsWith('# Netscape HTTP Cookie File')) {
-        fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
-        return ['--cookies', COOKIES_TMP_PATH];
-      } else {
-        console.warn('[WARN] YOUTUBE_COOKIES is corrupted or not in Netscape format. Ignoring.');
-        console.warn('[WARN] Decoded start:', cookieString.substring(0, 100));
-      }
+      const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
+      fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
+      return ['--cookies', COOKIES_TMP_PATH];
     } catch (err) {
       console.error('[ERROR] Failed to write YOUTUBE_COOKIES dynamically:', err.message);
     }
   } else if (fs.existsSync(COOKIES_TMP_PATH)) {
-    const localCookies = fs.readFileSync(COOKIES_TMP_PATH, 'utf-8');
-    if (localCookies.startsWith('# Netscape HTTP Cookie File')) {
-      return ['--cookies', COOKIES_TMP_PATH];
-    }
+    return ['--cookies', COOKIES_TMP_PATH];
   }
   return [];
 }
 
 function getYouTubeClient() {
-  // Use YOUTUBE_CLIENT env var to override; default lets yt-dlp select the best clients
-  // Natively evaluated by Node.js integration
+  // 'default' lets yt-dlp pick the best available client automatically.
+  // Forcing specific clients like 'web,ios' can cause "Requested format is not available" errors.
+  // On Railway/datacenter IPs, set YOUTUBE_CLIENT env var to e.g. 'tv_embedded' to bypass blocks.
   return process.env.YOUTUBE_CLIENT || 'default';
 }
 
-// Returns extractor-args for YouTube — using native yt-dlp js_engine
 function getExtractorArgs(url, clientOverride = null) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
@@ -81,66 +57,19 @@ function getExtractorArgs(url, clientOverride = null) {
 
   // Forcing Node.js to natively solve all JS signatures internally
   const baseArgs = [
-    '--js-runtimes', 'node'
+    '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=' + client,
+    '--extractor-args', 'youtube:po_token_provider=webpo_cffi'
   ];
 
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
-
-  // If we have cookies, the best and most reliable client is "web", otherwise "ios,tv,mweb" bypasses strict blocks best
-  if (client === 'default') {
-    if (hasCookies) {
-      return [...baseArgs, '--extractor-args', 'youtube:player_skip=configs'];
-    }
-    return [...baseArgs, '--extractor-args', 'youtube:player_client=ios,tv,mweb'];
-  }
-  return [...baseArgs, '--extractor-args', `youtube:player_client=${client}`];
+  return baseArgs;
 }
 
-
-// ─── Cobalt.tools API helpers ────────────────────────────────────────────────
-// Cobalt is a free, open-source download API that bypasses YouTube's datacenter
-// IP blocks. Used as an automatic fallback when yt-dlp fails for YouTube URLs.
-
-async function cobaltFetch(url, { isAudio = false, quality = 'max' } = {}) {
-  const resp = await fetch('https://api.cobalt.tools/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({
-      url,
-      downloadMode: isAudio ? 'audio' : 'auto',
-      videoQuality: quality === 'max' || !quality ? 'max' : quality,
-      filenameStyle: 'basic',
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!resp.ok) throw new Error(`Cobalt API HTTP ${resp.status}`);
-  return resp.json();
-}
-
-async function youtubeOEmbed(url) {
-  const resp = await fetch(
-    `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
-    { signal: AbortSignal.timeout(8000) }
-  );
-  if (!resp.ok) throw new Error(`oEmbed HTTP ${resp.status}`);
-  return resp.json();
-}
-
-// Standard quality options offered when cobalt is used
-const COBALT_FORMATS = [
-  { format_id: 'cobalt_max', resolution: 'Best', ext: 'mp4', note: '⚡ via cobalt' },
-  { format_id: 'cobalt_1080', resolution: '1080p', ext: 'mp4', note: '⚡ via cobalt' },
-  { format_id: 'cobalt_720', resolution: '720p', ext: 'mp4', note: '⚡ via cobalt' },
-  { format_id: 'cobalt_480', resolution: '480p', ext: 'mp4', note: '⚡ via cobalt' },
-  { format_id: 'cobalt_360', resolution: '360p', ext: 'mp4', note: '⚡ via cobalt' },
-  { format_id: 'cobalt_audio', resolution: 'audio', ext: 'mp3', note: '⚡ via cobalt' },
-];
-// ─────────────────────────────────────────────────────────────────────────────
 
 // In-memory job store
 const jobs = {};
 
-// Find yt-dlp executable
+// Find yt-dlp executable — tries yt-dlp → python -m yt_dlp → python3 -m yt_dlp
 const { execSync } = require('child_process');
 let YT_DLP_CMD = 'yt-dlp';
 try {
@@ -205,24 +134,7 @@ function spawnYtDlp(args, options = {}) {
   const parts = YT_DLP_CMD.split(' ');
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
-
-  // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
-  // Use process.execPath to get the absolute path to the current Node executable
-  const nodeDir = require('path').dirname(process.execPath);
-  const pathEnv = [nodeDir, process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin'].filter(Boolean).join(path.delimiter);
-
-  // Provide GetPOT with local script path if docker symlink is missing
-  const potPath = path.join(__dirname, '../bgutil-server/build');
-  const env = {
-    ...process.env,
-    ...(options.env || {}),
-    PATH: pathEnv,
-    // Add env vars if bgutil supports reading location via env (it usually defaults to /root/bgutil... or cwd)
-    BGUTIL_YTDLP_POT_PROVIDER_SERVER_BUILD_DIR: potPath,
-    POT_PROVIDER_DIR: potPath
-  };
-
-  return spawn(cmd, [...pre, ...args], { ...options, env });
+  return spawn(cmd, [...pre, ...args], options);
 }
 
 // Build a safe format string depending on ffmpeg availability
@@ -273,17 +185,14 @@ function setDownloadFilename(res, title, ext) {
 app.get('/api/yt-debug', (req, res) => {
   const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
   const playerClient = req.query.client || getYouTubeClient();
-  const cookiesArr = req.query.nocookies ? [] : getCookiesArgs();
-  const hasCookies = req.query.nocookies ? false : fs.existsSync(COOKIES_TMP_PATH);
-
-  const isFormatList = !!req.query.F;
+  const cookiesArr = getCookiesArgs();
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
 
   const dbgArgs = [
-    isFormatList ? '-F' : '--dump-json',
-    '--no-playlist', '--no-warnings', '--verbose',
+    '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
     ...getImpersonationArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    ...getExtractorArgs(url, playerClient),
+    ...((!playerClient || playerClient === 'default') ? [] : ['--extractor-args', 'youtube:player_client=' + playerClient]),
     '--rm-cache-dir',
     '--socket-timeout', '20',
     ...cookiesArr,
@@ -291,7 +200,6 @@ app.get('/api/yt-debug', (req, res) => {
   ];
   let out = '', err = '';
   const p2 = spawnYtDlp(dbgArgs);
-  p2.on('error', (err) => { err += `\n[SPAWN ERROR] ${err.message}`; console.error('yt-dlp spawn error', err); });
   p2.stdout.on('data', d => { out += d; });
   p2.stderr.on('data', d => { err += d; });
   let ytDlpVersion = 'unknown';
@@ -305,22 +213,8 @@ app.get('/api/yt-debug', (req, res) => {
     clientUsed: playerClient,
     ytDlpVersion: ytDlpVersion,
     cookiesTmpPath: COOKIES_TMP_PATH,
-    stderr: err.slice(0, 5000), stdout_len: out.length,
-    stdout: out.slice(0, 50000)
+    stderr: err.slice(0, 1500), stdout_len: out.length
   }));
-});
-
-app.get('/api/env-debug', (req, res) => {
-  let lengths = {};
-  let chunks = {};
-  for (let i = 1; i <= 10; i++) {
-    let key = `YOUTUBE_COOKIES_${i}`;
-    let val = process.env[key] || '';
-    lengths[key] = val.length;
-    if (val) chunks[key] = val.substring(0, 100) + '...';
-  }
-  lengths['YOUTUBE_COOKIES'] = process.env.YOUTUBE_COOKIES ? process.env.YOUTUBE_COOKIES.length : 0;
-  res.json({ lengths, chunks });
 });
 
 // POST /api/info - Get video info
@@ -329,105 +223,21 @@ app.post('/api/info', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
   // Strip YouTube playlist/mix params — only keep the video ID
-  let videoId = null;
   try {
     const u = new URL(url);
     if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
-      videoId = u.hostname.includes('youtu.be')
+      const v = u.hostname.includes('youtu.be')
         ? u.pathname.replace('/', '')
         : u.searchParams.get('v');
-      if (videoId) url = `https://www.youtube.com/watch?v=${videoId}`;
+      if (v) url = `https://www.youtube.com/watch?v=${v}`;
     }
   } catch { }
 
   console.log(`[INFO] Fetching: ${url}`);
-  const isYouTube = !!videoId;
-
-  // ── RapidAPI YouTube Fallback ──
-  // Bypasses datacenter blocks cleanly
-  if (isYouTube && process.env.RAPID_API_KEY) {
-    try {
-      console.log('[INFO] YouTube detected — trying RapidAPI fallback...');
-      const rapidUrl = `https://youtube-media-downloader.p.rapidapi.com/v2/video/details?videoId=${videoId}`;
-      const apiRes = await fetch(rapidUrl, {
-        method: 'GET',
-        headers: {
-          'x-rapidapi-host': 'youtube-media-downloader.p.rapidapi.com',
-          'x-rapidapi-key': process.env.RAPID_API_KEY
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-
-      const data = await apiRes.json();
-      if (!apiRes.ok || data.message === "You are not subscribed to this API.") {
-        console.warn('[INFO] RapidAPI returned error:', data.message || apiRes.status);
-      } else if (data.status === false || data.error) {
-        console.warn('[INFO] RapidAPI inner error:', data);
-      } else {
-        // Map RapidAPI response to our format
-        console.log('[INFO] RapidAPI succeeded');
-        const formats = [];
-
-        // Videos
-        if (data.videos && data.videos.items) {
-          data.videos.items.forEach((v, i) => {
-            formats.push({
-              format_id: `rapid_video_${i}`,
-              ext: v.extension || 'mp4',
-              resolution: v.quality || 'unknown',
-              filesize: null,
-              vcodec: 'avc1',
-              acodec: v.hasAudio ? 'mp4a' : 'none',
-              note: `${v.sizeText || ''} ${v.hasAudio ? '(Audio+Video)' : '(Video Only)'}`.trim()
-            });
-          });
-        }
-
-        // Audios
-        if (data.audios && data.audios.items) {
-          data.audios.items.forEach((a, i) => {
-            formats.push({
-              format_id: `rapid_audio_${i}`,
-              ext: a.extension || 'mp3',
-              resolution: 'audio',
-              filesize: null,
-              vcodec: 'none',
-              acodec: 'mp4a',
-              note: a.sizeText || 'Audio'
-            });
-          });
-        }
-
-        // Dedup by note/resolution just in case
-        const seen = new Set();
-        const uniqueFormats = formats.filter(f => {
-          const id = f.resolution + f.note;
-          if (seen.has(id)) return false;
-          seen.add(id); return true;
-        });
-
-        const thumb = (data.thumbnails && data.thumbnails.length > 0) ? data.thumbnails[data.thumbnails.length - 1].url : null;
-
-        return res.json({
-          title: data.title || 'YouTube Video',
-          thumbnail: thumb,
-          duration: data.lengthSeconds ? parseInt(data.lengthSeconds) : null,
-          uploader: data.author ? data.author.name : 'YouTube',
-          platform: 'Youtube',
-          webpage_url: url,
-          formats: uniqueFormats,
-          best_format: formats.length > 0 ? formats[0].format_id : 'auto'
-        });
-      }
-    } catch (rapidErr) {
-      console.error('[INFO] RapidAPI fallback failed:', rapidErr.message, '— falling back to yt-dlp');
-    }
-  }
-
-  // ── yt-dlp path (YouTube fallback + all non-YouTube platforms) ──
-  const cookiesArgs = getCookiesArgs();
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
-  console.log(`[INFO] Running yt-dlp | cookies: ${hasCookies}`);
+  console.log(`[INFO] Cookies loaded: ${hasCookies}`);
+
+  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
   const args = [
     '--dump-json',
@@ -438,60 +248,24 @@ app.post('/api/info', async (req, res) => {
     ...getExtractorArgs(url),
     '--rm-cache-dir',
     '--socket-timeout', '30',
-    ...cookiesArgs,
+    ...getCookiesArgs(),
     url
   ];
 
   let output = '', errOutput = '';
   const proc = spawnYtDlp(args);
-  proc.on('error', (err) => {
-    console.error('[INFO] yt-dlp spawn error:', err);
-    if (!res.headersSent) res.status(500).json({ error: 'yt-dlp failed to start or is not installed. Contact admin.', details: err.message });
-  });
   proc.stdout.on('data', d => { output += d.toString(); });
   proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
-  proc.on('close', async (code) => {
+  proc.on('close', (code) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
-    if (res.headersSent) return; // Prevent setting headers again if spawn error already did
-
     if (code !== 0) {
-      let cobaltSucceeded = false;
-      // Try cobalt.tools fallback for YouTube before returning error
-      if (isYouTube) {
-        console.log('[INFO] yt-dlp failed, trying cobalt.tools fallback...');
-        try {
-          const [oembed, cobalt] = await Promise.all([
-            youtubeOEmbed(url),
-            cobaltFetch(url, { isAudio: false, quality: 'max' }),
-          ]);
-          if (cobalt.status === 'tunnel' || cobalt.status === 'redirect' || cobalt.status === 'picker') {
-            console.log('[INFO] cobalt fallback succeeded!');
-            return res.json({
-              title: oembed.title,
-              thumbnail: oembed.thumbnail_url,
-              duration: null,
-              uploader: oembed.author_name,
-              platform: 'Youtube',
-              formats: COBALT_FORMATS,
-              best_format: 'cobalt_max',
-              via_cobalt: true,
-            });
-            cobaltSucceeded = true;
-          }
-        } catch (cobaltErr) {
-          console.error('[INFO] cobalt fallback failed:', cobaltErr.message);
-        }
-      }
-
-      if (cobaltSucceeded) return; // Prevent sending error response if we already sent JSON
-
       let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
       if (errOutput.includes('DRM protected')) {
         friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
       } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
         friendly = 'This video is private or requires sign-in.';
       } else if (errOutput.includes('Requested format is not available')) {
-        friendly = 'Could not fetch YouTube format due to Bot Verification Block. Try updating your cookies or using client=web,ios.';
+        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
       } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
         friendly = 'This video is unavailable in your region or has been removed.';
       }
@@ -504,7 +278,7 @@ app.post('/api/info', async (req, res) => {
       return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
     }
 
-    const isYouTubeExtractor = (info.extractor_key || '').toLowerCase().includes('youtube');
+    const isYouTube = (info.extractor_key || '').toLowerCase().includes('youtube');
 
     const formats = (info.formats || [])
       .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
@@ -552,58 +326,7 @@ app.post('/api/info', async (req, res) => {
 });
 
 // Download to a temp file, then stream to client.
-async function streamDownload(res, req, url, format_id, isAudio, title) {
-  // ── Handle RapidAPI Downloads (proxy the direct media URL) ──
-  if (format_id && format_id.startsWith('rapid_')) {
-    console.log(`[INFO] Streaming via RapidAPI: ${format_id}`);
-    try {
-      const u = new URL(url);
-      const videoId = u.searchParams.get('v') || u.pathname.replace('/', '');
-      const rapidUrl = `https://youtube-media-downloader.p.rapidapi.com/v2/video/details?videoId=${videoId}`;
-      const apiRes = await fetch(rapidUrl, {
-        headers: {
-          'x-rapidapi-host': 'youtube-media-downloader.p.rapidapi.com',
-          'x-rapidapi-key': process.env.RAPID_API_KEY || ''
-        }
-      });
-      const data = await apiRes.json();
-
-      const isRapidVideo = format_id.startsWith('rapid_video_');
-      const rapidIdx = parseInt(format_id.split('_').pop() || '0');
-      let mediaUrl = null;
-      let ext = 'mp4';
-
-      if (isRapidVideo && data.videos && data.videos.items[rapidIdx]) {
-        mediaUrl = data.videos.items[rapidIdx].url;
-        ext = data.videos.items[rapidIdx].extension || 'mp4';
-      } else if (!isRapidVideo && data.audios && data.audios.items[rapidIdx]) {
-        mediaUrl = data.audios.items[rapidIdx].url;
-        ext = data.audios.items[rapidIdx].extension || 'mp3';
-      }
-
-      if (!mediaUrl) {
-        console.error('[INFO] RapidAPI download URL not found for id:', format_id);
-        return res.status(404).send('Media format not found via API');
-      }
-
-      const safeTitle = (title || data.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}.${ext}"`);
-      if (isRapidVideo) res.setHeader('Content-Type', 'video/mp4');
-      else res.setHeader('Content-Type', 'audio/mpeg');
-
-      // Proxy the stream
-      const mediaRes = await fetch(mediaUrl);
-      if (!mediaRes.ok) throw new Error(`Media fetch failed: ${mediaRes.status}`);
-
-      return mediaRes.body.pipe(res);
-    } catch (e) {
-      console.error('[INFO] RapidAPI streaming failed:', e);
-      if (!res.headersSent) return res.status(500).send('Streaming failed: ' + e.message);
-      return;
-    }
-  }
-
-  // ── Normal yt-dlp Download ──
+function streamDownload(res, req, url, format_id, isAudio, title) {
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
@@ -644,10 +367,6 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   console.log(`  tmp: ${tmpFile}`);
 
   const proc = spawnYtDlp(args);
-  proc.on('error', (err) => {
-    console.error('[DOWNLOAD] yt-dlp spawn error:', err);
-    if (!res.headersSent) res.status(500).send('Download failed: yt-dlp not found or failed to start.');
-  });
   let errOutput = '';
   proc.stderr.on('data', d => {
     errOutput += d.toString();
@@ -706,45 +425,22 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   req.on('close', () => proc.kill('SIGTERM'));
 }
 
-// Helper: handle cobalt download redirect
-async function handleCobaltDownload(res, url, format_id, isAudio, title) {
-  const quality = (format_id || '').replace('cobalt_', '');
-  const isAudioReq = quality === 'audio' || isAudio;
-  try {
-    const result = await cobaltFetch(url, { isAudio: isAudioReq, quality: isAudioReq ? 'max' : quality });
-    if (result.status === 'tunnel' || result.status === 'redirect') {
-      setDownloadFilename(res, title, isAudioReq ? 'mp3' : 'mp4');
-      return res.redirect(302, result.url);
-    }
-    return res.status(502).json({ error: 'Cobalt returned unexpected status: ' + result.status });
-  } catch (e) {
-    console.error('[COBALT] Download failed:', e.message);
-    return res.status(502).json({ error: 'Cobalt download failed', msg: e.message });
-  }
-}
-
 // GET /api/download?url=...&format_id=...&audio_only=1&title=...
-app.get('/api/download', async (req, res) => {
+app.get('/api/download', (req, res) => {
   const { url, format_id, audio_only, title } = req.query;
   if (!url) return res.status(400).send('URL is required');
   const isAudio = audio_only === '1' || audio_only === 'true';
-  if (format_id && format_id.startsWith('cobalt_')) {
-    return handleCobaltDownload(res, url, format_id, isAudio, title);
-  }
   streamDownload(res, req, url, format_id, isAudio, title);
 });
 
 // POST /api/download - accepts JSON body as well
-app.post('/api/download', async (req, res) => {
+app.post('/api/download', (req, res) => {
   const url = req.body?.url;
   const format_id = req.body?.format_id;
   const audio_only = req.body?.audio_only;
   const title = req.body?.title;
   if (!url) return res.status(400).json({ error: 'URL is required' });
   const isAudio = audio_only === '1' || audio_only === 'true' || audio_only === true;
-  if (format_id && format_id.startsWith('cobalt_')) {
-    return handleCobaltDownload(res, url, format_id, isAudio, title);
-  }
   streamDownload(res, req, url, format_id, isAudio, title);
 });
 
@@ -790,84 +486,6 @@ app.get('/api/status/:jobId', (req, res) => {
   res.json(job);
 });
 
-// GET /api/sysinfo - Debug environment
-app.get('/api/sysinfo', (req, res) => {
-  try {
-    const nodeV = require('child_process').execSync('node -v').toString().trim();
-    const pythonV = require('child_process').execSync('python3 --version 2>&1').toString().trim();
-    const ytDlpLoc = require('child_process').execSync('which yt-dlp 2>/dev/null || echo not-found').toString().trim();
-    const nodeLoc = require('child_process').execSync('which node 2>/dev/null || echo not-found').toString().trim();
-    // Test if Python can spawn node (same way yt-dlp does internally)
-    let pythonCanSpawnNode = 'FAILED';
-    try {
-      pythonCanSpawnNode = require('child_process').execSync(
-        `python3 -c "import subprocess; r=subprocess.run(['node','-e','process.stdout.write(String(40+2))'], capture_output=True, text=True, timeout=5); print(r.stdout.strip() or 'empty: '+r.stderr[:100])"`
-      ).toString().trim();
-    } catch (e) { pythonCanSpawnNode = 'ERR:' + e.message.slice(0, 150); }
-    // Check native yt-dlp js engine integration exactly the way yt-dlp does it internally
-    let ytDlpPythonNode = 'untested';
-    try {
-      ytDlpPythonNode = require('child_process').execSync(
-        `python3 -c "from yt_dlp.utils._jsruntime import NodeJsRuntime; print(NodeJsRuntime()._info())"`
-      ).toString().trim();
-    } catch (e) { ytDlpPythonNode = 'ERR: ' + e.message.slice(0, 500); }
-
-    res.json({
-      nodeV,
-      pythonV,
-      ytDlpLoc,
-      nodeLoc,
-      pythonCanSpawnNode,
-      ytDlpPythonNode,
-      cwd: process.cwd(),
-      cmd: YT_DLP_CMD,
-      rapidApiSet: !!process.env.RAPID_API_KEY
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/upload-cookies - For pasting large raw Network Cookies directly
-app.post('/api/upload-cookies', express.text({ type: '*/*', limit: '5mb' }), (req, res) => {
-  const data = req.body;
-  if (!data || !data.includes('.youtube.com')) {
-    return res.status(400).send('Error: Invalid cookie text. Must contain youtube.com cookies.');
-  }
-
-  // Ensure Netscape header
-  const finalStr = data.includes('# Netscape HTTP Cookie File')
-    ? data
-    : '# Netscape HTTP Cookie File\n' + data;
-
-  fs.writeFileSync(COOKIES_TMP_PATH, finalStr, 'utf-8');
-  console.log(`[INFO] SAVED NEW COOKIES FROM WEB UPLOAD! (${finalStr.length} bytes)`);
-  res.send('✅ SUCCESS! YouTube Cookies saved internally. You can now download YouTube videos!');
-});
-
-// GET /admin-cookies
-app.get('/admin-cookies', (req, res) => {
-  res.send(`
-    <html>
-      <body style="font-family:sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto;">
-        <h2>🍪 Secret Cookie Admin Panel</h2>
-        <p>Koyeb's Environment Variables cut off long Base64 strings. Paste the raw text from your <b>cookies.txt</b> file here instead!</p>
-        <textarea id="box" placeholder="# Netscape HTTP Cookie File..." style="width:100%; height:300px; padding:10px; font-family:monospace; margin-bottom: 10px;"></textarea>
-        <button onclick="save()" style="padding: 10px 20px; font-size: 16px; background:#7c3aed; color:white; border:none; border-radius: 5px; cursor:pointer;">Inject Cookies to Server</button>
-        <div id="out" style="margin-top:20px; font-weight:bold; color:green;"></div>
-        <script>
-          function save() {
-            fetch('/api/upload-cookies', { method: 'POST', body: document.getElementById('box').value })
-              .then(r=>r.text())
-              .then(t => document.getElementById('out').innerText = t)
-              .catch(e => alert(e));
-          }
-        </script>
-      </body>
-    </html>
-  `);
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 All In One Downloader server running at http://0.0.0.0:${PORT}\n`);
+app.listen(PORT, () => {
+  console.log(`\n🚀 All In One Downloader server running at http://localhost:${PORT}\n`);
 });
