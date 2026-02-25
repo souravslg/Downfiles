@@ -34,7 +34,11 @@ function getCookiesArgs() {
     for (let i = 1; i <= 10; i++) {
       let chunk = process.env[`YOUTUBE_COOKIES_${i}`];
       if (chunk) {
-        base64Cookies += chunk.trim().replace(/^["']|["']$/g, '');
+        chunk = chunk.trim().replace(/^["']|["']$/g, '');
+        if (chunk.startsWith('=')) {
+          chunk = chunk.substring(1);
+        }
+        base64Cookies += chunk;
       } else {
         break;
       }
