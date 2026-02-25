@@ -67,8 +67,8 @@ function getCookiesArgs() {
 // --- Deleted proxy logic ---
 
 function getYouTubeClient() {
-  // 'ios,web' is generally more resilient on datacenter IPs than 'default'.
-  return process.env.YOUTUBE_CLIENT || 'ios,web';
+  // 'default' lets yt-dlp pick the best available client automatically.
+  return process.env.YOUTUBE_CLIENT || 'default';
 }
 
 // Returns extractor-args array only when a non-default client is set
@@ -116,10 +116,7 @@ console.log(`Using yt-dlp command: ${YT_DLP_CMD}`);
 function getImpersonationArgs(url) {
   if (!url) return [];
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
-  if (isYouTube) {
-    // Chrome impersonation helps bypass bot detection alongside Node.js JS solver
-    return ['--impersonate', 'chrome'];
-  }
+  if (isYouTube) return [];
   const isSocial = url.includes('facebook.com') || url.includes('fb.com') ||
     url.includes('instagram.com') || url.includes('twitter.com') ||
     url.includes('tiktok.com');
