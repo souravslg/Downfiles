@@ -29,11 +29,12 @@ const os = require('os');
 const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
 
 function getCookiesArgs() {
-  let base64Cookies = process.env.YOUTUBE_COOKIES || '';
+  let base64Cookies = (process.env.YOUTUBE_COOKIES || '').trim().replace(/^["']|["']$/g, '');
   if (!base64Cookies) {
     for (let i = 1; i <= 10; i++) {
-      if (process.env[`YOUTUBE_COOKIES_${i}`]) {
-        base64Cookies += process.env[`YOUTUBE_COOKIES_${i}`];
+      let chunk = process.env[`YOUTUBE_COOKIES_${i}`];
+      if (chunk) {
+        base64Cookies += chunk.trim().replace(/^["']|["']$/g, '');
       } else {
         break;
       }
@@ -43,11 +44,12 @@ function getCookiesArgs() {
   if (base64Cookies) {
     try {
       const cookieString = Buffer.from(base64Cookies, 'base64').toString('utf-8');
-      if (cookieString.startsWith('# Netscape HTTP Cookie File')) {
+      if (cookieString.trim().startsWith('# Netscape HTTP Cookie File')) {
         fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
         return ['--cookies', COOKIES_TMP_PATH];
       } else {
         console.warn('[WARN] YOUTUBE_COOKIES is corrupted or not in Netscape format. Ignoring.');
+        console.warn('[WARN] Decoded start:', cookieString.substring(0, 100));
       }
     } catch (err) {
       console.error('[ERROR] Failed to write YOUTUBE_COOKIES dynamically:', err.message);
