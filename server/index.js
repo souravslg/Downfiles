@@ -295,76 +295,112 @@ app.post('/api/info', async (req, res) => {
 
   args.push(url);
 
-  let output = '', errOutput = '';
-  const proc = spawnYtDlp(args);
-  proc.stdout.on('data', d => { output += d.toString(); });
-  proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
-  proc.on('close', (code) => {
-    console.log(`[INFO] yt-dlp exited with code ${code}`);
-    if (code !== 0) {
-      let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
-      if (errOutput.includes('DRM protected')) {
-        friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
-      } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
-        friendly = 'This video is private or requires sign-in.';
-      } else if (errOutput.includes('Requested format is not available')) {
-        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
-      } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
-        friendly = 'This video is unavailable in your region or has been removed.';
-      }
-      return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
-    }
+  let output = '', errOutput = '', code = -1;
+  let attempts = 0;
+  const maxAttempts = isYouTube ? 3 : 1;
 
-    let info;
-    try { info = JSON.parse(output); } catch (e) {
-      console.error('[INFO] JSON parse failed:', e.message);
-      return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
-    }
+  while (attempts < maxAttempts) {
+    attempts++;
+    output = '';
+    errOutput = '';
 
-    const isYouTube = (info.extractor_key || '').toLowerCase().includes('youtube');
-
-    const formats = (info.formats || [])
-      .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
-      .map(f => {
-        const height = f.height || parseInt(f.resolution) || 0;
-        // Let yt-dlp and ffmpeg pick the exact video format ID and merge it with bestaudio later
-        const safeFormatId = f.format_id;
-        return {
-          format_id: safeFormatId,
-          ext: f.ext,
-          resolution: f.resolution || (height ? `${height}p` : 'audio'),
-          filesize: f.filesize || f.filesize_approx || null,
-          vcodec: f.vcodec,
-          acodec: f.acodec,
-          fps: f.fps || null,
-          tbr: f.tbr || null,
-          note: f.format_note || ''
-        };
-      })
-      .sort((a, b) => {
-        const getH = r => parseInt(r) || 0;
-        return getH(b.resolution) - getH(a.resolution);
+    await new Promise((resolve) => {
+      const proc = spawnYtDlp(args);
+      proc.stdout.on('data', d => { output += d.toString(); });
+      proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
+      proc.on('close', (c) => {
+        code = c;
+        resolve();
       });
-
-    // Deduplicate by resolution
-    const seen = new Set();
-    const uniqueFormats = formats.filter(f => {
-      const key = f.resolution;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
     });
 
-    res.json({
-      title: info.title,
-      thumbnail: info.thumbnail,
-      duration: info.duration,
-      uploader: info.uploader || info.channel,
-      platform: info.extractor_key,
-      webpage_url: info.webpage_url,
-      formats: uniqueFormats,
-      best_format: info.format_id
+    console.log(`[INFO] yt-dlp exited with code ${code} (Attempt ${attempts}/${maxAttempts})`);
+
+    // If it succeeded, or if it failed for a non-network reason, stop retrying.
+    if (code === 0 || (!errOutput.includes('timed out') && !errOutput.includes('Connection refused'))) {
+      break;
+    }
+
+    if (attempts < maxAttempts && isYouTube) {
+      console.log(`[WARN] Proxy failed (timeout). Fetching a new proxy for attempt ${attempts + 1}...`);
+      const newProxy = await getRandomProxy();
+      if (newProxy) {
+        // Find and replace the --proxy argument
+        const proxyIdx = args.indexOf('--proxy');
+        if (proxyIdx !== -1) {
+          args[proxyIdx + 1] = newProxy;
+        } else {
+          // It didn't have a proxy before (maybe cache was empty), add it now before the URL
+          const urlIdx = args.indexOf(url);
+          args.splice(urlIdx, 0, '--proxy', newProxy);
+        }
+      }
+    }
+  }
+
+  if (code !== 0) {
+    let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+    if (errOutput.includes('DRM protected')) {
+      friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
+    } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
+      friendly = 'This video is private or requires sign-in.';
+    } else if (errOutput.includes('Requested format is not available')) {
+      friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+    } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
+      friendly = 'This video is unavailable in your region or has been removed.';
+    }
+    return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
+  }
+
+  let info;
+  try { info = JSON.parse(output); } catch (e) {
+    console.error('[INFO] JSON parse failed:', e.message);
+    return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
+  }
+
+  const isYouTubeVideo = (info.extractor_key || '').toLowerCase().includes('youtube');
+
+  const formats = (info.formats || [])
+    .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
+    .map(f => {
+      const height = f.height || parseInt(f.resolution) || 0;
+      // Let yt-dlp and ffmpeg pick the exact video format ID and merge it with bestaudio later
+      const safeFormatId = f.format_id;
+      return {
+        format_id: safeFormatId,
+        ext: f.ext,
+        resolution: f.resolution || (height ? `${height}p` : 'audio'),
+        filesize: f.filesize || f.filesize_approx || null,
+        vcodec: f.vcodec,
+        acodec: f.acodec,
+        fps: f.fps || null,
+        tbr: f.tbr || null,
+        note: f.format_note || ''
+      };
+    })
+    .sort((a, b) => {
+      const getH = r => parseInt(r) || 0;
+      return getH(b.resolution) - getH(a.resolution);
     });
+
+  // Deduplicate by resolution
+  const seen = new Set();
+  const uniqueFormats = formats.filter(f => {
+    const key = f.resolution;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  res.json({
+    title: info.title,
+    thumbnail: info.thumbnail,
+    duration: info.duration,
+    uploader: info.uploader || info.channel,
+    platform: info.extractor_key,
+    webpage_url: info.webpage_url,
+    formats: uniqueFormats,
+    best_format: info.format_id
   });
 });
 
