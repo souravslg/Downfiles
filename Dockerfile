@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the latest nightly yt-dlp, plus curl_cffi and the PO token provider
+# Install the latest nightly yt-dlp, plus curl-cffi and the PO token provider
 RUN pip3 install --no-cache-dir -U --pre yt-dlp curl-cffi bgutil-ytdlp-pot-provider
 
 # Set working directory to the API server

@@ -64,24 +64,7 @@ function getCookiesArgs() {
   return [];
 }
 
-let cachedProxies = [];
-let lastProxyFetch = 0;
-
-async function getRandomProxy() {
-  if (Date.now() - lastProxyFetch > 1000 * 60 * 60 || cachedProxies.length === 0) {
-    try {
-      console.log('[INFO] Fetching fresh proxies...');
-      const req = await fetch('https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt', { signal: AbortSignal.timeout(5000) });
-      const txt = await req.text();
-      cachedProxies = txt.split('\n').map(l => l.trim()).filter(l => l.includes(':'));
-      lastProxyFetch = Date.now();
-    } catch (err) {
-      console.error('[WARN] Failed to fetch proxy list:', err.message);
-    }
-  }
-  if (cachedProxies.length === 0) return null;
-  return 'http://' + cachedProxies[Math.floor(Math.random() * cachedProxies.length)];
-}
+// --- Deleted proxy logic ---
 
 function getYouTubeClient() {
   // 'default' lets yt-dlp pick the best available client automatically.
@@ -95,8 +78,12 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   if (!isYouTube) return [];
   const client = getYouTubeClient();
-  if (!client || client === 'default') return [];
-  return ['--extractor-args', 'youtube:player_client=' + client];
+
+  // Restore native Node.js solver for JS challenges
+  const baseArgs = ['--js-runtimes', 'node'];
+
+  if (!client || client === 'default') return baseArgs;
+  return [...baseArgs, '--extractor-args', 'youtube:player_client=' + client];
 }
 
 
@@ -168,7 +155,18 @@ function spawnYtDlp(args, options = {}) {
   const parts = YT_DLP_CMD.split(' ');
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
-  return spawn(cmd, [...pre, ...args], options);
+
+  // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
+  const nodeDir = path.dirname(process.execPath);
+  const pathEnv = [nodeDir, process.env.PATH].filter(Boolean).join(path.delimiter);
+
+  const env = {
+    ...process.env,
+    ...(options.env || {}),
+    PATH: pathEnv
+  };
+
+  return spawn(cmd, [...pre, ...args], { ...options, env });
 }
 
 // Build a safe format string depending on ffmpeg availability
@@ -178,20 +176,19 @@ function buildFormatArg(format_id, isAudio) {
     return 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio';
   }
   if (format_id && format_id !== 'auto') {
-    // Specific format selected by user — always add generous fallbacks in case
-    // the exact format_id is unavailable on this server's IP/client combination
+    // Specific format selected by user — always add generous fallbacks
     if (HAS_FFMPEG) {
-      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}/bestvideo[ext=mp4][height<=360]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[vcodec!=none][height<=360]/best`;
+      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best`;
     }
-    return `${format_id}/best[ext=mp4][vcodec!=none][height<=360]/best[vcodec!=none][height<=360]/best`;
+    return `${format_id}/best[ext=mp4][vcodec!=none]/best[vcodec!=none]/best`;
   }
   // Auto mode
   if (HAS_FFMPEG) {
     // Prefer mp4 container with merged streams, fallback to any best video+audio, then best single file
-    return 'bestvideo[ext=mp4][height<=360]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[vcodec!=none][height<=360]/best';
+    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best';
   }
   // No ffmpeg — use pre-merged mp4 streams only (avoids webm), demand video codec
-  return 'best[ext=mp4][vcodec!=none][height<=360]/best[height<=360][vcodec!=none]/best[vcodec!=none]/best';
+  return 'best[ext=mp4][vcodec!=none]/best[height<=720][vcodec!=none]/best[vcodec!=none]/best';
 }
 
 // Safe filename sanitiser
@@ -285,122 +282,79 @@ app.post('/api/info', async (req, res) => {
     ...getCookiesArgs()
   ];
 
-  if (isYouTube) {
-    const proxy = await getRandomProxy();
-    if (proxy) {
-      args.push('--proxy', proxy);
-      console.log(`[INFO] Using Proxy: ${proxy}`);
-    }
-  }
-
   args.push(url);
 
-  let output = '', errOutput = '', code = -1;
-  let attempts = 0;
-  const maxAttempts = isYouTube ? 3 : 1;
+  let output = '', errOutput = '';
+  const proc = spawnYtDlp(args);
+  proc.stdout.on('data', d => { output += d.toString(); });
+  proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
 
-  while (attempts < maxAttempts) {
-    attempts++;
-    output = '';
-    errOutput = '';
-
-    await new Promise((resolve) => {
-      const proc = spawnYtDlp(args);
-      proc.stdout.on('data', d => { output += d.toString(); });
-      proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
-      proc.on('close', (c) => {
-        code = c;
-        resolve();
-      });
-    });
-
-    console.log(`[INFO] yt-dlp exited with code ${code} (Attempt ${attempts}/${maxAttempts})`);
-
-    // If it succeeded, or if it failed for a non-network reason, stop retrying.
-    if (code === 0 || (!errOutput.includes('timed out') && !errOutput.includes('Connection refused'))) {
-      break;
-    }
-
-    if (attempts < maxAttempts && isYouTube) {
-      console.log(`[WARN] Proxy failed (timeout). Fetching a new proxy for attempt ${attempts + 1}...`);
-      const newProxy = await getRandomProxy();
-      if (newProxy) {
-        // Find and replace the --proxy argument
-        const proxyIdx = args.indexOf('--proxy');
-        if (proxyIdx !== -1) {
-          args[proxyIdx + 1] = newProxy;
-        } else {
-          // It didn't have a proxy before (maybe cache was empty), add it now before the URL
-          const urlIdx = args.indexOf(url);
-          args.splice(urlIdx, 0, '--proxy', newProxy);
-        }
+  proc.on('close', async (code) => {
+    console.log(`[INFO] yt-dlp exited with code ${code}`);
+    if (code !== 0) {
+      let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      if (errOutput.includes('DRM protected')) {
+        friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
+      } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
+        friendly = 'This video is private or requires sign-in.';
+      } else if (errOutput.includes('Requested format is not available')) {
+        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
+      } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
+        friendly = 'This video is unavailable in your region or has been removed.';
       }
+      return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
     }
-  }
 
-  if (code !== 0) {
-    let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
-    if (errOutput.includes('DRM protected')) {
-      friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
-    } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
-      friendly = 'This video is private or requires sign-in.';
-    } else if (errOutput.includes('Requested format is not available')) {
-      friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
-    } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
-      friendly = 'This video is unavailable in your region or has been removed.';
+    let info;
+    try { info = JSON.parse(output); } catch (e) {
+      console.error('[INFO] JSON parse failed:', e.message);
+      return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
     }
-    return res.status(400).json({ error: friendly, details: errOutput.slice(0, 500) });
-  }
 
-  let info;
-  try { info = JSON.parse(output); } catch (e) {
-    console.error('[INFO] JSON parse failed:', e.message);
-    return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
-  }
+    const isYouTubeVideo = (info.extractor_key || '').toLowerCase().includes('youtube');
 
-  const isYouTubeVideo = (info.extractor_key || '').toLowerCase().includes('youtube');
+    const formats = (info.formats || [])
+      .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
+      .map(f => {
+        const height = f.height || parseInt(f.resolution) || 0;
+        // Let yt-dlp and ffmpeg pick the exact video format ID and merge it with bestaudio later
+        const safeFormatId = f.format_id;
+        return {
+          format_id: safeFormatId,
+          ext: f.ext,
+          resolution: f.resolution || (height ? `${height}p` : 'audio'),
+          filesize: f.filesize || f.filesize_approx || null,
+          vcodec: f.vcodec,
+          acodec: f.acodec,
+          fps: f.fps || null,
+          tbr: f.tbr || null,
+          note: f.format_note || ''
+        };
+      })
+      .sort((a, b) => {
+        const getH = r => parseInt(r) || 0;
+        return getH(b.resolution) - getH(a.resolution);
+      });
 
-  const formats = (info.formats || [])
-    .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
-    .map(f => {
-      const height = f.height || parseInt(f.resolution) || 0;
-      // Let yt-dlp and ffmpeg pick the exact video format ID and merge it with bestaudio later
-      const safeFormatId = f.format_id;
-      return {
-        format_id: safeFormatId,
-        ext: f.ext,
-        resolution: f.resolution || (height ? `${height}p` : 'audio'),
-        filesize: f.filesize || f.filesize_approx || null,
-        vcodec: f.vcodec,
-        acodec: f.acodec,
-        fps: f.fps || null,
-        tbr: f.tbr || null,
-        note: f.format_note || ''
-      };
-    })
-    .sort((a, b) => {
-      const getH = r => parseInt(r) || 0;
-      return getH(b.resolution) - getH(a.resolution);
+    // Deduplicate by resolution
+    const seen = new Set();
+    const uniqueFormats = formats.filter(f => {
+      const key = f.resolution;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
 
-  // Deduplicate by resolution
-  const seen = new Set();
-  const uniqueFormats = formats.filter(f => {
-    const key = f.resolution;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  res.json({
-    title: info.title,
-    thumbnail: info.thumbnail,
-    duration: info.duration,
-    uploader: info.uploader || info.channel,
-    platform: info.extractor_key,
-    webpage_url: info.webpage_url,
-    formats: uniqueFormats,
-    best_format: info.format_id
+    res.json({
+      title: info.title,
+      thumbnail: info.thumbnail,
+      duration: info.duration,
+      uploader: info.uploader || info.channel,
+      platform: info.extractor_key,
+      webpage_url: info.webpage_url,
+      formats: uniqueFormats,
+      best_format: info.format_id
+    });
   });
 });
 
@@ -425,14 +379,6 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     ...getCookiesArgs()
   ];
 
-  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
-    const proxy = await getRandomProxy();
-    if (proxy) {
-      args.push('--proxy', proxy);
-      console.log(`[INFO] Using Proxy: ${proxy}`);
-    }
-  }
-
   args.push('-o', tmpFile);
 
   if (isAudio) {
@@ -440,8 +386,6 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   }
 
   if (HAS_FFMPEG) {
-    // Only pass --ffmpeg-location if it's a specific custom path, otherwise yt-dlp finds it in PATH.
-    // Passing '--ffmpeg-location ffmpeg' breaks yt-dlp merging on Linux.
     if (FFMPEG_PATH !== 'ffmpeg') {
       args.push('--ffmpeg-location', FFMPEG_PATH);
     }
@@ -454,16 +398,19 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   console.log(`  format: ${formatArg} | audio: ${isAudio} | ffmpeg: ${HAS_FFMPEG}`);
   console.log(`  tmp: ${tmpFile}`);
 
-  const proc = spawnYtDlp(args);
   let errOutput = '';
+  let stdOutput = '';
+  const proc = spawnYtDlp(args);
+
   proc.stderr.on('data', d => {
     errOutput += d.toString();
     process.stdout.write('[yt-dlp log] ' + d.toString());
   });
-  let stdOutput = '';
   proc.stdout.on('data', d => {
     stdOutput += d.toString();
   });
+
+  req.on('close', () => proc.kill('SIGTERM'));
 
   proc.on('close', (code) => {
     console.log(`[DOWNLOAD] yt-dlp exited ${code}`);
@@ -477,21 +424,24 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     let sendFile = tmpFile;
     if (!fs.existsSync(sendFile)) {
       // Find what file yt-dlp actually created
-      let tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
+      let tmpFiles = fs.readdirSync(require('os').tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
       if (tmpFiles.length > 0) {
         // Prioritize actual video containers over audio streams in case of unmerged files
         tmpFiles.sort((a, b) => {
           const score = f => f.endsWith('.mp4') ? 1 : f.endsWith('.mkv') ? 2 : f.endsWith('.webm') ? 3 : 4;
           return score(a) - score(b);
         });
-        sendFile = path.join(os.tmpdir(), tmpFiles[0]);
+        sendFile = require('path').join(require('os').tmpdir(), tmpFiles[0]);
       } else {
-        return res.status(500).json({
-          error: 'Downloaded file not found on server.',
-          tmpFileTried: tmpFile,
-          ytdlpStderr: errOutput,
-          ytdlpStdout: stdOutput
-        });
+        if (!res.headersSent) {
+          return res.status(500).json({
+            error: 'Downloaded file not found on server.',
+            tmpFileTried: tmpFile,
+            ytdlpStderr: errOutput,
+            ytdlpStdout: stdOutput
+          });
+        }
+        return;
       }
     }
 
@@ -509,8 +459,6 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     stream.on('end', () => cleanup(sendFile));
     stream.pipe(res);
   });
-
-  req.on('close', () => proc.kill('SIGTERM'));
 }
 
 // GET /api/download?url=...&format_id=...&audio_only=1&title=...
