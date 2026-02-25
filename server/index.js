@@ -306,6 +306,16 @@ app.get('/api/yt-debug', (req, res) => {
   }));
 });
 
+app.get('/api/env-debug', (req, res) => {
+  let lengths = {};
+  for (let i = 1; i <= 10; i++) {
+    let key = `YOUTUBE_COOKIES_${i}`;
+    lengths[key] = process.env[key] ? process.env[key].length : 0;
+  }
+  lengths['YOUTUBE_COOKIES'] = process.env.YOUTUBE_COOKIES ? process.env.YOUTUBE_COOKIES.length : 0;
+  res.json({ lengths });
+});
+
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
   let { url } = req.body;
