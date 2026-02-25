@@ -791,6 +791,46 @@ app.get('/api/sysinfo', (req, res) => {
   }
 });
 
+// POST /api/upload-cookies - For pasting large raw Network Cookies directly
+app.post('/api/upload-cookies', express.text({ type: '*/*', limit: '5mb' }), (req, res) => {
+  const data = req.body;
+  if (!data || !data.includes('.youtube.com')) {
+    return res.status(400).send('Error: Invalid cookie text. Must contain youtube.com cookies.');
+  }
+
+  // Ensure Netscape header
+  const finalStr = data.includes('# Netscape HTTP Cookie File')
+    ? data
+    : '# Netscape HTTP Cookie File\n' + data;
+
+  fs.writeFileSync(COOKIES_TMP_PATH, finalStr, 'utf-8');
+  console.log(`[INFO] SAVED NEW COOKIES FROM WEB UPLOAD! (${finalStr.length} bytes)`);
+  res.send('✅ SUCCESS! YouTube Cookies saved internally. You can now download YouTube videos!');
+});
+
+// GET /admin-cookies
+app.get('/admin-cookies', (req, res) => {
+  res.send(`
+    <html>
+      <body style="font-family:sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto;">
+        <h2>🍪 Secret Cookie Admin Panel</h2>
+        <p>Koyeb's Environment Variables cut off long Base64 strings. Paste the raw text from your <b>cookies.txt</b> file here instead!</p>
+        <textarea id="box" placeholder="# Netscape HTTP Cookie File..." style="width:100%; height:300px; padding:10px; font-family:monospace; margin-bottom: 10px;"></textarea>
+        <button onclick="save()" style="padding: 10px 20px; font-size: 16px; background:#7c3aed; color:white; border:none; border-radius: 5px; cursor:pointer;">Inject Cookies to Server</button>
+        <div id="out" style="margin-top:20px; font-weight:bold; color:green;"></div>
+        <script>
+          function save() {
+            fetch('/api/upload-cookies', { method: 'POST', body: document.getElementById('box').value })
+              .then(r=>r.text())
+              .then(t => document.getElementById('out').innerText = t)
+              .catch(e => alert(e));
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 All In One Downloader server running at http://0.0.0.0:${PORT}\n`);
 });
