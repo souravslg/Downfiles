@@ -32,13 +32,20 @@ function getCookiesArgs() {
   if (process.env.YOUTUBE_COOKIES) {
     try {
       const cookieString = Buffer.from(process.env.YOUTUBE_COOKIES, 'base64').toString('utf-8');
-      fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
-      return ['--cookies', COOKIES_TMP_PATH];
+      if (cookieString.startsWith('# Netscape HTTP Cookie File')) {
+        fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
+        return ['--cookies', COOKIES_TMP_PATH];
+      } else {
+        console.warn('[WARN] YOUTUBE_COOKIES is corrupted or not in Netscape format. Ignoring.');
+      }
     } catch (err) {
       console.error('[ERROR] Failed to write YOUTUBE_COOKIES dynamically:', err.message);
     }
   } else if (fs.existsSync(COOKIES_TMP_PATH)) {
-    return ['--cookies', COOKIES_TMP_PATH];
+    const localCookies = fs.readFileSync(COOKIES_TMP_PATH, 'utf-8');
+    if (localCookies.startsWith('# Netscape HTTP Cookie File')) {
+      return ['--cookies', COOKIES_TMP_PATH];
+    }
   }
   return [];
 }
