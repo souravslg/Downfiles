@@ -6,12 +6,19 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the latest yt-dlp
-RUN pip3 install --no-cache-dir -U --pre yt-dlp
+# Install the latest yt-dlp and the POT provider plugin
+RUN pip3 install --no-cache-dir -U --pre yt-dlp bgutil-ytdlp-pot-provider
 
 # Set working directory to the API server
 WORKDIR /app
 COPY . .
+
+# Build bgutil-server
+WORKDIR /app/bgutil-server
+RUN npm ci --no-audit --no-fund
+RUN npx tsc
+
+WORKDIR /app
 
 # Install main Node dependencies
 RUN npm install --omit=dev
