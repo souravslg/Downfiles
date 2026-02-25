@@ -62,10 +62,9 @@ function getExtractorArgs(url, clientOverride = null) {
   if (!isYouTube) return [];
   const client = clientOverride || getYouTubeClient();
 
-  // Forcing Node.js to natively solve all JS signatures internally + query local bgutil server
+  // Forcing Node.js to natively solve all JS signatures internally
   const baseArgs = [
-    '--js-runtimes', 'node',
-    '--extractor-args', `youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416`
+    '--js-runtimes', 'node'
   ];
 
   if (client === 'default') {
@@ -794,18 +793,4 @@ app.get('/api/sysinfo', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 All In One Downloader server running at http://0.0.0.0:${PORT}\n`);
-
-  // Start the bgutil-server token provider locally in the background
-  const potServerPath = path.join(__dirname, '../bgutil-server/build/main.js');
-  if (fs.existsSync(potServerPath)) {
-    console.log('[INFO] Starting bgutil-server Token Provider on port 4416...');
-    const potProc = spawn(process.execPath, [potServerPath], {
-      stdio: 'inherit',
-      env: { ...process.env, PORT: '4416' }
-    });
-    potProc.on('error', (e) => console.error('[WARN] Failed to start Token Provider:', e.message));
-    potProc.on('exit', (c) => console.warn(`[WARN] Token Provider exited with code ${c}`));
-  } else {
-    console.warn('[WARN] Token Provider server not found at:', potServerPath);
-  }
 });

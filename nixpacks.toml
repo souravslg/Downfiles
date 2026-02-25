@@ -1,9 +1,0 @@
-[providers]
-  node = {}
-  python = {}
-
-[phases.setup]
-  nixPkgs = ["ffmpeg"]
-
-[start]
-  cmd = "npm run start"
