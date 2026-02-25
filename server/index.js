@@ -425,6 +425,7 @@ app.post('/api/info', async (req, res) => {
   }
 
   // ── yt-dlp path (YouTube fallback + all non-YouTube platforms) ──
+  const cookiesArgs = getCookiesArgs();
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
   console.log(`[INFO] Running yt-dlp | cookies: ${hasCookies}`);
 
@@ -437,7 +438,7 @@ app.post('/api/info', async (req, res) => {
     ...getExtractorArgs(url),
     '--rm-cache-dir',
     '--socket-timeout', '30',
-    ...getCookiesArgs(),
+    ...cookiesArgs,
     url
   ];
 
