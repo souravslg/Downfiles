@@ -62,8 +62,13 @@ function getExtractorArgs(url, clientOverride = null) {
   if (!isYouTube) return [];
   const client = clientOverride || getYouTubeClient();
 
-  // Forcing Node.js to natively solve all JS signatures internally
-  const baseArgs = ['--js-runtimes', 'node'];
+  const scriptPath = path.join(__dirname, '../bgutil-server/build/generate_once.js');
+
+  // Forcing Node.js to natively solve all JS signatures internally + use script fallback
+  const baseArgs = [
+    '--js-runtimes', 'node',
+    '--extractor-args', `youtubepot-bgutilscript:script_path=${scriptPath}`
+  ];
 
   if (client === 'default') {
     return [...baseArgs, '--extractor-args', 'youtube:player_client=ios,tv,mweb'];
