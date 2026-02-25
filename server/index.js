@@ -67,7 +67,13 @@ function getExtractorArgs(url, clientOverride = null) {
     '--js-runtimes', 'node'
   ];
 
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+
+  // If we have cookies, the best and most reliable client is "web", otherwise "ios,tv,mweb" bypasses strict blocks best
   if (client === 'default') {
+    if (hasCookies) {
+      return [...baseArgs, '--extractor-args', 'youtube:player_skip=configs'];
+    }
     return [...baseArgs, '--extractor-args', 'youtube:player_client=ios,tv,mweb'];
   }
   return [...baseArgs, '--extractor-args', `youtube:player_client=${client}`];
