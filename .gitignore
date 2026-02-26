@@ -23,3 +23,17 @@ yesterday_server.js
 !info.json
 test_*.js
 pytube_info.py
+pytube_helper.py
+test_down.mp4
+remote_debug.*
+info_res.json
+response.txt
+log.txt
+err.txt
+formats.txt
+formats3.txt
+formats_embed.txt
+formats_ios_safari.txt
+formats_tv_embed.txt
+headers.txt
+tmp*.log

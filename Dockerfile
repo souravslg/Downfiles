@@ -1,8 +1,9 @@
 FROM nikolaik/python-nodejs:python3.11-nodejs20
 
-# Install system dependencies (Python is already installed in this image, add FFmpeg)
+# Install system dependencies (including build tools for node-canvas)
 RUN apt-get update && \
-    apt-get install -y ffmpeg wget curl unzip && \
+    apt-get install -y ffmpeg wget curl unzip build-essential \
+    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
