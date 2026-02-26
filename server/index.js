@@ -89,12 +89,17 @@ function getYouTubeClient() {
 // Returns extractor-args array only when a non-default client is set
 function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
-  if (!isYouTube) return [];
-  const client = getYouTubeClient();
+  const isInstagram = url && url.includes('instagram.com');
 
-  // Restore native Node.js solver for JS challenges
   const baseArgs = ['--js-runtimes', 'node'];
 
+  if (isInstagram) {
+    baseArgs.push('--extractor-args', 'instagram:allow_direct_url=True');
+  }
+
+  if (!isYouTube) return baseArgs;
+
+  const client = getYouTubeClient();
   if (!client || client === 'default') return baseArgs;
   return [...baseArgs, '--extractor-args', 'youtube:player_client=' + client];
 }
@@ -132,11 +137,14 @@ function getImpersonationArgs(url) {
   if (!url) return [];
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
   if (isYouTube) return [];
+
   const isSocial = url.includes('facebook.com') || url.includes('fb.com') ||
     url.includes('instagram.com') || url.includes('twitter.com') ||
     url.includes('tiktok.com');
+
   if (isSocial) {
-    return ['--add-header', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'];
+    // yt-dlp newer versions support --impersonate which is much more robust than just UA headers
+    return ['--impersonate', 'chrome'];
   }
   return [];
 }
