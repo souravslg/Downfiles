@@ -99,10 +99,10 @@ function getExtractorArgs(url) {
   }
 
   if (isInstagram) {
-    return ['--extractor-args', 'instagram:allow_direct_url=True'];
+    return ['--extractor-args', 'instagram:allow_direct_url=True', '--no-check-certificate', '--geo-bypass'];
   }
   if (url.includes('facebook.com') || url.includes('fb.com')) {
-    return ['--extractor-args', 'facebook:collect_external=True'];
+    return ['--extractor-args', 'facebook:collect_external=True', '--no-check-certificate', '--geo-bypass'];
   }
 
   return [];
@@ -197,25 +197,25 @@ function spawnYtDlp(args, options = {}) {
 // Build a safe format string depending on ffmpeg availability
 function buildFormatArg(format_id, isAudio) {
   if (isAudio) {
-    // Audio: always works, no merging needed
-    return 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio';
+    // Audio-only: prefer m4a but accept any best audio
+    return 'bestaudio[ext=m4a]/bestaudio';
   }
   if (format_id && format_id !== 'auto') {
-    // Specific format selected by user — ensure we always pair with audio if it's video-only
-    // Using (id+bestaudio) fallback to (id) if id already has audio handled by yt-dlp
-    // But we avoid a naked DASH video fallback by checking codec if possible or just allowing yt-dlp to handle it
+    // Specific format selected
     if (HAS_FFMPEG) {
-      return `(${format_id}+bestaudio[ext=m4a])/(${format_id}+bestaudio)/${format_id}[vcodec!=none][acodec!=none]/bestvideo+bestaudio/best`;
+      // Force merging with bestaudio if a specific video itag is chosen.
+      // Use parentheses to ensure the +bestaudio applies to the specific itag.
+      // Fallback to bestvideo+bestaudio if the specific itag pairing fails.
+      return `(${format_id}+bestaudio)/bestvideo+bestaudio/best`;
     }
-    return `${format_id}[vcodec!=none][acodec!=none] / ${format_id} / best[ext=mp4]/best`;
+    // No ffmpeg: must be a combined format (has both video and audio)
+    return `${format_id}[acodec!=none]/best[acodec!=none]/best`;
   }
   // Auto mode
   if (HAS_FFMPEG) {
-    // Prefer mp4 container with merged streams
-    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
+    return 'bestvideo+bestaudio/best';
   }
-  // No ffmpeg — use pre-merged mp4 streams only (avoids webm)
-  return 'best[ext=mp4][vcodec!=none][acodec!=none]/best[vcodec!=none][acodec!=none]/best';
+  return 'best[acodec!=none]/best';
 }
 
 // Safe filename sanitiser
