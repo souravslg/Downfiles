@@ -101,6 +101,9 @@ function getExtractorArgs(url) {
   if (isInstagram) {
     return ['--extractor-args', 'instagram:allow_direct_url=True'];
   }
+  if (url.includes('facebook.com') || url.includes('fb.com')) {
+    return ['--extractor-args', 'facebook:collect_external=True'];
+  }
 
   return [];
 }
@@ -198,19 +201,21 @@ function buildFormatArg(format_id, isAudio) {
     return 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio';
   }
   if (format_id && format_id !== 'auto') {
-    // Specific format selected by user — always add generous fallbacks
+    // Specific format selected by user — ensure we always pair with audio if it's video-only
+    // Using (id+bestaudio) fallback to (id) if id already has audio handled by yt-dlp
+    // But we avoid a naked DASH video fallback by checking codec if possible or just allowing yt-dlp to handle it
     if (HAS_FFMPEG) {
-      return `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/${format_id}/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best`;
+      return `(${format_id}+bestaudio[ext=m4a])/(${format_id}+bestaudio)/${format_id}[vcodec!=none][acodec!=none]/bestvideo+bestaudio/best`;
     }
-    return `${format_id}/best[ext=mp4][vcodec!=none]/best[vcodec!=none]/best`;
+    return `${format_id}[vcodec!=none][acodec!=none] / ${format_id} / best[ext=mp4]/best`;
   }
   // Auto mode
   if (HAS_FFMPEG) {
-    // Prefer mp4 container with merged streams, fallback to any best video+audio, then best single file
-    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[vcodec!=none]/best';
+    // Prefer mp4 container with merged streams
+    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
   }
-  // No ffmpeg — use pre-merged mp4 streams only (avoids webm), demand video codec
-  return 'best[ext=mp4][vcodec!=none]/best[height<=720][vcodec!=none]/best[vcodec!=none]/best';
+  // No ffmpeg — use pre-merged mp4 streams only (avoids webm)
+  return 'best[ext=mp4][vcodec!=none][acodec!=none]/best[vcodec!=none][acodec!=none]/best';
 }
 
 // Safe filename sanitiser
@@ -388,7 +393,17 @@ app.post('/api/info', async (req, res) => {
       })
       .sort((a, b) => {
         const getH = r => parseInt(r) || 0;
-        return getH(b.resolution) - getH(a.resolution);
+        const hA = getH(a.resolution);
+        const hB = getH(b.resolution);
+
+        if (hA !== hB) return hB - hA;
+
+        // Same resolution: prefer combined formats (both video and audio)
+        const aCombined = a.vcodec !== 'none' && a.acodec !== 'none';
+        const bCombined = b.vcodec !== 'none' && b.acodec !== 'none';
+        if (aCombined && !bCombined) return -1;
+        if (!aCombined && bCombined) return 1;
+        return 0;
       });
 
     // Deduplicate by resolution
