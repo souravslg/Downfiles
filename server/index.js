@@ -91,17 +91,18 @@ function getExtractorArgs(url) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   const isInstagram = url && url.includes('instagram.com');
 
-  const baseArgs = ['--js-runtimes', 'node'];
-
-  if (isInstagram) {
-    baseArgs.push('--extractor-args', 'instagram:allow_direct_url=True');
+  if (isYouTube) {
+    const baseArgs = ['--js-runtimes', 'node'];
+    const client = getYouTubeClient();
+    if (!client || client === 'default') return baseArgs;
+    return [...baseArgs, '--extractor-args', 'youtube:player_client=' + client];
   }
 
-  if (!isYouTube) return baseArgs;
+  if (isInstagram) {
+    return ['--extractor-args', 'instagram:allow_direct_url=True'];
+  }
 
-  const client = getYouTubeClient();
-  if (!client || client === 'default') return baseArgs;
-  return [...baseArgs, '--extractor-args', 'youtube:player_client=' + client];
+  return [];
 }
 
 
@@ -310,6 +311,8 @@ app.post('/api/info', async (req, res) => {
         } catch (pyErr) {
           console.error('[ERROR] pytubefix fallback failed:', pyErr.message);
         }
+      } else {
+        console.log('[INFO] yt-dlp failed and not a YouTube URL, no fallback available.');
       }
 
       let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
