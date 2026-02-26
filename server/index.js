@@ -204,16 +204,16 @@ function buildFormatArg(format_id, isAudio) {
     // Specific format selected
     if (HAS_FFMPEG) {
       // Force merging with bestaudio if a specific video itag is chosen.
-      // Use parentheses to ensure the +bestaudio applies to the specific itag.
-      // Fallback to bestvideo+bestaudio if the specific itag pairing fails.
-      return `(${format_id}+bestaudio)/bestvideo+bestaudio/best`;
+      // But also try the itag directly if it already has audio.
+      return `(${format_id}+bestaudio)/${format_id}[acodec!=none]/bestvideo+bestaudio/best[acodec!=none]/best`;
     }
     // No ffmpeg: must be a combined format (has both video and audio)
     return `${format_id}[acodec!=none]/best[acodec!=none]/best`;
   }
   // Auto mode
   if (HAS_FFMPEG) {
-    return 'bestvideo+bestaudio/best';
+    // Prefer video+audio, but if that fails, ensure we pick a 'best' that HAS audio.
+    return 'bestvideo+bestaudio/best[acodec!=none]/best';
   }
   return 'best[acodec!=none]/best';
 }
