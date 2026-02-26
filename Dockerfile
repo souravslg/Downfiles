@@ -38,12 +38,24 @@ COPY package*.json ./
 # Install node dependencies
 RUN npm install --omit=dev
 
+# Install dependencies and build POT provider
+WORKDIR /app/bgutil-ytdlp-pot-provider/server
+RUN npm install
+RUN npx tsc
+
+# Set working directory back to /app
+WORKDIR /app
+
 # Copy the rest of the application (respecting .dockerignore)
 COPY . .
 
+# Ensure start.sh is executable
+RUN chmod +x start.sh
+
 # Ensure the app uses port 8000 (Koyeb default)
 EXPOSE 8000
+EXPOSE 4416
 ENV PORT=8000
 
 # Start command
-CMD ["npm", "start"]
+CMD ["/bin/bash", "./start.sh"]

@@ -10,6 +10,5 @@ cookie_*.txt
 *.tmp
 .DS_Store
 Thumbs.db
-bgutil-ytdlp-pot-provider/
 bgutil-server/
 pytube_helper.py.bak
