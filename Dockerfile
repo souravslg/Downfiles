@@ -1,3 +1,4 @@
+# Build Version: 2026-02-26-v3
 # Use a standard Node.js image
 FROM node:20-bookworm
 
