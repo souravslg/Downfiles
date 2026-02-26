@@ -1,5 +1,4 @@
-# Build Version: 2026-02-26-v3
-# Use a standard Node.js image
+# Build Version: 2026-02-27-v1
 FROM node:20-bookworm
 
 # Use root user for system setup
@@ -20,43 +19,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up a virtual environment for Python to avoid PEP 668 issues
+# Set up a virtual environment for Python
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install Python packages into the virtual environment
+# Install Python packages
 RUN pip install --no-cache-dir -U --pre yt-dlp
 RUN pip install --no-cache-dir curl-cffi bgutil-ytdlp-pot-provider aiohttp
-RUN pip install --no-cache-dir pytubefix
+RUN pip install --no-cache-dir pytubefix --no-deps
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files
 COPY package*.json ./
-
-# Install node dependencies
 RUN npm install --omit=dev
 
-# Copy POT provider source
-COPY bgutil-ytdlp-pot-provider ./bgutil-ytdlp-pot-provider
-
-# Install dependencies and build POT provider
-WORKDIR /app/bgutil-ytdlp-pot-provider/server
-RUN npm install
-RUN npx tsc
-
-# Set working directory back to /app
-WORKDIR /app
-
-# Copy the rest of the application (respecting .dockerignore)
+# Copy source
 COPY . .
 
-# Ensure start.sh is executable
+# Build POT provider server
+WORKDIR /app/bgutil-ytdlp-pot-provider/server
+RUN npm install
+RUN npx -p typescript tsc
+
+# Back to /app
+WORKDIR /app
 RUN chmod +x start.sh
 
-# Ensure the app uses port 8000 (Koyeb default)
+# Ports
 EXPOSE 8000
 EXPOSE 4416
 ENV PORT=8000

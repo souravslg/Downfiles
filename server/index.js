@@ -98,11 +98,12 @@ function getExtractorArgs(url) {
     return [...baseArgs, '--extractor-args', 'youtube:player_client=' + client];
   }
 
-  if (isInstagram) {
-    return ['--extractor-args', 'instagram:allow_direct_url=True', '--no-check-certificate', '--geo-bypass'];
+  if (url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com')) {
+    // Facebook often needs more specific impersonation and extra arguments
+    return ['--impersonate', 'chrome', '--no-check-certificate', '--geo-bypass'];
   }
-  if (url.includes('facebook.com') || url.includes('fb.com')) {
-    return ['--extractor-args', 'facebook:collect_external=True', '--no-check-certificate', '--geo-bypass'];
+  if (url.includes('instagram.com')) {
+    return ['--impersonate', 'chrome', '--no-check-certificate', '--geo-bypass'];
   }
 
   return [];
@@ -195,24 +196,24 @@ function spawnYtDlp(args, options = {}) {
 }
 
 // Build a safe format string depending on ffmpeg availability
-function buildFormatArg(format_id, isAudio) {
+function buildFormatArg(format_id, isAudio, isSocial) {
   if (isAudio) {
-    // Audio-only: prefer m4a but accept any best audio
     return 'bestaudio[ext=m4a]/bestaudio';
   }
+
   if (format_id && format_id !== 'auto') {
-    // Specific format selected
     if (HAS_FFMPEG) {
-      // Force merging with bestaudio if a specific video itag is chosen.
-      // But also try the itag directly if it already has audio.
+      // Force pairing with bestaudio if it's a social platform or DASH
       return `(${format_id}+bestaudio)/${format_id}[acodec!=none]/bestvideo+bestaudio/best[acodec!=none]/best`;
     }
-    // No ffmpeg: must be a combined format (has both video and audio)
     return `${format_id}[acodec!=none]/best[acodec!=none]/best`;
   }
-  // Auto mode
+
   if (HAS_FFMPEG) {
-    // Prefer video+audio, but if that fails, ensure we pick a 'best' that HAS audio.
+    // If social platform, be even more aggressive about pairing
+    if (isSocial) {
+      return '(bestvideo+bestaudio)/best[acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best';
+    }
     return 'bestvideo+bestaudio/best[acodec!=none]/best';
   }
   return 'best[acodec!=none]/best';
@@ -468,7 +469,12 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     return;
   }
 
-  const formatArg = buildFormatArg(format_id, isAudio);
+  const isFacebook = url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com');
+  const isInstagram = url.includes('instagram.com');
+  const isSocial = isFacebook || isInstagram;
+
+  const formatArg = buildFormatArg(format_id, isAudio, isSocial);
+  const impersonateArgs = getImpersonationArgs(url);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
 
@@ -477,7 +483,7 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   const args = [
     '-f', formatArg,
     '--no-playlist',
-    ...getImpersonationArgs(url),
+    ...impersonateArgs,
     ...getExtractorArgs(url),
     '--add-header', 'Accept-Language: en-US,en;q=0.9',
     '--rm-cache-dir',
@@ -502,7 +508,7 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   args.push(url);
 
   console.log(`[DOWNLOAD] ${url}`);
-  console.log(`  format: ${formatArg} | audio: ${isAudio} | ffmpeg: ${HAS_FFMPEG}`);
+  console.log(`  format: ${formatArg} | audio: ${isAudio} | social: ${isSocial} | ffmpeg: ${HAS_FFMPEG}`);
   console.log(`  tmp: ${tmpFile}`);
 
   let errOutput = '';
