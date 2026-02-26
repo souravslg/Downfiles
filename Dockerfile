@@ -44,7 +44,7 @@ COPY bgutil-ytdlp-pot-provider ./bgutil-ytdlp-pot-provider
 # Install dependencies and build POT provider
 WORKDIR /app/bgutil-ytdlp-pot-provider/server
 RUN npm install --include=dev
-RUN npx -p typescript tsc
+RUN npx -p typescript tsc -p tsconfig.json
 
 # Set working directory back to /app
 WORKDIR /app
