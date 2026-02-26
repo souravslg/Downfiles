@@ -4,7 +4,7 @@ async function testLocal() {
     const url = 'https://youtu.be/GX9x62kFsVU?list=RDzlcs_1knJSA';
     console.log('Testing LOCAL /api/info...');
     try {
-        const res = await fetch('http://localhost:3000/api/info', {
+        const res = await fetch('http://localhost:8000/api/info', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })

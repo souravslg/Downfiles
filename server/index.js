@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 app.use(cors());
 app.use(express.json());
@@ -61,6 +61,17 @@ function getCookiesArgs() {
       return ['--cookies', COOKIES_TMP_PATH];
     }
   }
+
+  // Fallback for Localhost Testing
+  const LOCAL_COOKIES_PATH = path.join(__dirname, '..', 'cookie_base.txt');
+  if (fs.existsSync(LOCAL_COOKIES_PATH)) {
+    const localTestCookies = fs.readFileSync(LOCAL_COOKIES_PATH, 'utf-8');
+    if (localTestCookies.startsWith('# Netscape HTTP Cookie File')) {
+      console.log('[INFO] Using local cookie_base.txt for authentication bypass');
+      return ['--cookies', LOCAL_COOKIES_PATH];
+    }
+  }
+
   return [];
 }
 
@@ -69,9 +80,10 @@ function getCookiesArgs() {
 function getYouTubeClient() {
   if (process.env.YOUTUBE_CLIENT) return process.env.YOUTUBE_CLIENT;
 
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
-  // Default android client drops cookies. Use web if we have cookies, else fallback to android
-  return hasCookies ? 'web' : 'android';
+  const hasCookies = fs.existsSync(COOKIES_TMP_PATH) || fs.existsSync(path.join(__dirname, '..', 'cookie_base.txt'));
+  // android_vr and tv are currently very resilient.
+  // Use a comma-separated list to let yt-dlp pick the best available or rotate.
+  return hasCookies ? 'web,tv,ios' : 'android_vr,tv,ios';
 }
 
 // Returns extractor-args array only when a non-default client is set
@@ -213,41 +225,29 @@ function setDownloadFilename(res, title, ext) {
     `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`);
 }
 
-// GET /api/yt-debug - shows raw yt-dlp output for debugging
-app.get('/api/yt-debug', (req, res) => {
-  const url = req.query.url || 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-  const playerClient = req.query.client || getYouTubeClient();
-  const cookiesArr = getCookiesArgs();
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
+// --- Pytube helper ---
+async function fetchPytubeInfo(url) {
+  return new Promise((resolve, reject) => {
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
+    const proc = spawn(pythonCmd, [pyPath, 'info', url]);
+    let stdout = '', stderr = '';
+    proc.stdout.on('data', d => stdout += d);
+    proc.stderr.on('data', d => stderr += d);
+    proc.on('close', code => {
+      if (code !== 0) return reject(new Error(stderr || 'Pytube failed'));
+      try {
+        const info = JSON.parse(stdout);
+        // Prefix itags to distinguish them from yt-dlp format IDs if needed, 
+        // though they are often the same. We'll use them as is but mark the source.
+        info.formats = (info.formats || []).map(f => ({ ...f, format_id: 'pytube_' + f.format_id }));
+        resolve(info);
+      } catch (e) { reject(e); }
+    });
+  });
+}
 
-  const dbgArgs = [
-    '--dump-json', '--no-playlist', '--no-warnings', '--verbose',
-    ...getImpersonationArgs(url),
-    '--add-header', 'Accept-Language: en-US,en;q=0.9',
-    ...((!playerClient || playerClient === 'default') ? [] : ['--extractor-args', 'youtube:player_client=' + playerClient]),
-    '--rm-cache-dir',
-    '--socket-timeout', '20',
-    ...cookiesArr,
-    url
-  ];
-  let out = '', err = '';
-  const p2 = spawnYtDlp(dbgArgs);
-  p2.stdout.on('data', d => { out += d; });
-  p2.stderr.on('data', d => { err += d; });
-  let ytDlpVersion = 'unknown';
-  try {
-    ytDlpVersion = require('child_process').execSync(`${YT_DLP_CMD} --version`).toString().trim();
-  } catch (e) { }
-
-  p2.on('close', c => res.json({
-    code: c, hasCookies,
-    hasEnvVar: !!process.env.YOUTUBE_COOKIES,
-    clientUsed: playerClient,
-    ytDlpVersion: ytDlpVersion,
-    cookiesTmpPath: COOKIES_TMP_PATH,
-    stderr: err.slice(0, 1500), stdout_len: out.length
-  }));
-});
+// Cobalt fallback removed as per user request to use yt-dlp only.
 
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
@@ -288,11 +288,22 @@ app.post('/api/info', async (req, res) => {
   let output = '', errOutput = '';
   const proc = spawnYtDlp(args);
   proc.stdout.on('data', d => { output += d.toString(); });
-  proc.stderr.on('data', d => { errOutput += d.toString(); process.stdout.write('[yt-dlp] ' + d); });
+  proc.stderr.on('data', d => { errOutput += d.toString(); });
 
   proc.on('close', async (code) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
     if (code !== 0) {
+      if (isYouTube) {
+        console.log('[INFO] yt-dlp failed for YouTube, trying pytubefix...');
+        try {
+          const info = await fetchPytubeInfo(url);
+          console.log('[INFO] pytubefix fallback successful');
+          return res.json(info);
+        } catch (pyErr) {
+          console.error('[ERROR] pytubefix fallback failed:', pyErr.message);
+        }
+      }
+
       let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
       if (errOutput.includes('DRM protected')) {
         friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
@@ -360,6 +371,38 @@ app.post('/api/info', async (req, res) => {
 
 // Download to a temp file, then stream to client.
 async function streamDownload(res, req, url, format_id, isAudio, title) {
+  const isPytube = format_id && format_id.startsWith('pytube_');
+
+  if (isPytube) {
+    const itag = format_id.replace('pytube_', '');
+    const tmpId = uuidv4();
+    const ext = isAudio ? 'mp3' : 'mp4';
+    const tmpFile = path.join(os.tmpdir(), `pytube_${tmpId}.${ext}`);
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
+
+    console.log(`[DOWNLOAD] via pytubefix: itag=${itag}`);
+    const proc = spawn(pythonCmd, [pyPath, 'download', url, itag, tmpFile]);
+
+    proc.stderr.on('data', d => console.log(`[pytube log] ${d}`));
+
+    req.on('close', () => proc.kill());
+
+    proc.on('close', (code) => {
+      if (code !== 0 || !fs.existsSync(tmpFile)) {
+        if (!res.headersSent) res.status(500).send('Pytube download failed');
+        return;
+      }
+
+      setDownloadFilename(res, title, ext);
+      res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
+      const stream = fs.createReadStream(tmpFile);
+      stream.on('end', () => { try { fs.unlinkSync(tmpFile); } catch (e) { } });
+      stream.pipe(res);
+    });
+    return;
+  }
+
   const formatArg = buildFormatArg(format_id, isAudio);
   const ext = isAudio ? 'mp3' : 'mp4';
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
@@ -522,7 +565,17 @@ app.get('/api/status/:jobId', (req, res) => {
   if (!job) return res.status(404).json({ error: 'Job not found' });
   res.json(job);
 });
+function startServer(port) {
+  const server = app.listen(port, () => {
+    console.log(`\n🚀 All In One Downloader server running at http://localhost:${port}\n`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is in use, trying ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 All In One Downloader server running at http://localhost:${PORT}\n`);
-});
+startServer(PORT);
