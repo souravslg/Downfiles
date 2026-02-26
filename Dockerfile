@@ -1,29 +1,45 @@
 FROM nikolaik/python-nodejs:python3.11-nodejs20
 
-# Install system dependencies (including build tools for node-canvas)
+# Use root user for system setup
+USER root
+
+# Install system dependencies for canvas, ffmpeg and build tools
 RUN apt-get update && \
-    apt-get install -y ffmpeg wget curl unzip build-essential \
-    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev && \
-    apt-get clean && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    wget \
+    curl \
+    unzip \
+    build-essential \
+    python3-dev \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install dependencies: yt-dlp, curl-cffi, PO token provider
-RUN pip3 install --no-cache-dir -U --pre yt-dlp curl-cffi bgutil-ytdlp-pot-provider aiohttp
-
-# Install pytubefix separately with --no-deps to avoid nodejs-wheel-binaries conflict
-# since node is already provided by the base image
-RUN pip3 install --no-cache-dir pytubefix --no-deps
-
-# Set working directory to the API server
+# Set working directory
 WORKDIR /app
-COPY . .
 
-# Install main Node dependencies
+# Copy dependency files first for better caching
+COPY package*.json ./
+
+# Install node dependencies
 RUN npm install --omit=dev
 
-# Koyeb usually expects port 8000 or the PORT env var
+# Install python dependencies
+RUN pip3 install --no-cache-dir -U --pre yt-dlp 
+RUN pip3 install --no-cache-dir curl-cffi bgutil-ytdlp-pot-provider aiohttp
+RUN pip3 install --no-cache-dir pytubefix --no-deps
+
+# Copy the rest of the application
+COPY . .
+
+# Ensure the app uses port 8000
 EXPOSE 8000
 ENV PORT=8000
 
-# Start the server
+# Start command
 CMD ["npm", "start"]

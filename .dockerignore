@@ -1,0 +1,15 @@
+.git
+node_modules
+*.mp4
+*.log
+tmp*
+remote_debug*
+extract_cookies.py
+test_*.js
+cookie_*.txt
+*.tmp
+.DS_Store
+Thumbs.db
+bgutil-ytdlp-pot-provider/
+bgutil-server/
+pytube_helper.py.bak
