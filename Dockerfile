@@ -27,7 +27,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Install Python packages into the virtual environment
 RUN pip install --no-cache-dir -U --pre yt-dlp
 RUN pip install --no-cache-dir curl-cffi bgutil-ytdlp-pot-provider aiohttp
-RUN pip install --no-cache-dir pytubefix --no-deps
+RUN pip install --no-cache-dir pytubefix
 
 # Set working directory
 WORKDIR /app
