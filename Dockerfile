@@ -38,10 +38,13 @@ COPY package*.json ./
 # Install node dependencies
 RUN npm install --omit=dev
 
+# Copy POT provider source
+COPY bgutil-ytdlp-pot-provider ./bgutil-ytdlp-pot-provider
+
 # Install dependencies and build POT provider
 WORKDIR /app/bgutil-ytdlp-pot-provider/server
 RUN npm install
-RUN ./node_modules/.bin/tsc
+RUN npx tsc
 
 # Set working directory back to /app
 WORKDIR /app
