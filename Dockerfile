@@ -1,43 +1,47 @@
-FROM nikolaik/python-nodejs:python3.11-nodejs20
+# Use a standard Node.js image
+FROM node:20-bookworm
 
 # Use root user for system setup
 USER root
 
-# Install system dependencies for canvas, ffmpeg and build tools
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Install Python and all required build tools + libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
     ffmpeg \
-    wget \
-    curl \
-    unzip \
     build-essential \
-    python3-dev \
+    pkg-config \
     libcairo2-dev \
     libpango1.0-dev \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
-    && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up a virtual environment for Python to avoid PEP 668 issues
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install Python packages into the virtual environment
+RUN pip install --no-cache-dir -U --pre yt-dlp
+RUN pip install --no-cache-dir curl-cffi bgutil-ytdlp-pot-provider aiohttp
+RUN pip install --no-cache-dir pytubefix --no-deps
 
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files first for better caching
+# Copy package files first for better caching
 COPY package*.json ./
 
 # Install node dependencies
 RUN npm install --omit=dev
 
-# Install python dependencies
-RUN pip3 install --no-cache-dir -U --pre yt-dlp 
-RUN pip3 install --no-cache-dir curl-cffi bgutil-ytdlp-pot-provider aiohttp
-RUN pip3 install --no-cache-dir pytubefix --no-deps
-
-# Copy the rest of the application
+# Copy the rest of the application (respecting .dockerignore)
 COPY . .
 
-# Ensure the app uses port 8000
+# Ensure the app uses port 8000 (Koyeb default)
 EXPOSE 8000
 ENV PORT=8000
 
