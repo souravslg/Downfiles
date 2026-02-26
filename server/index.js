@@ -235,11 +235,34 @@ function setDownloadFilename(res, title, ext) {
 }
 
 // --- Pytube helper ---
+async function getPoToken() {
+  try {
+    const res = await fetch('http://127.0.0.1:4416/get_pot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { poToken: data.poToken, visitorData: data.contentBinding };
+    }
+  } catch (err) {
+    console.warn('[WARN] Failed to fetch PO Token from provider:', err.message);
+  }
+  return null;
+}
+
 async function fetchPytubeInfo(url) {
+  const pot = await getPoToken();
   return new Promise((resolve, reject) => {
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
     const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
-    const proc = spawn(pythonCmd, [pyPath, 'info', url]);
+    const args = ['info', url];
+    if (pot) {
+      // placeholders for itag and path
+      args.push('none', 'none', pot.poToken, pot.visitorData);
+    }
+    const proc = spawn(pythonCmd, [pyPath, ...args]);
     let stdout = '', stderr = '';
     proc.stdout.on('data', d => stdout += d);
     proc.stderr.on('data', d => stderr += d);
@@ -247,8 +270,6 @@ async function fetchPytubeInfo(url) {
       if (code !== 0) return reject(new Error(stderr || 'Pytube failed'));
       try {
         const info = JSON.parse(stdout);
-        // Prefix itags to distinguish them from yt-dlp format IDs if needed, 
-        // though they are often the same. We'll use them as is but mark the source.
         info.formats = (info.formats || []).map(f => ({ ...f, format_id: 'pytube_' + f.format_id }));
         resolve(info);
       } catch (e) { reject(e); }
@@ -275,10 +296,22 @@ app.post('/api/info', async (req, res) => {
   } catch { }
 
   console.log(`[INFO] Fetching: ${url}`);
+  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+
+  if (isYouTube) {
+    console.log('[INFO] Using pytubefix directly for YouTube...');
+    try {
+      const info = await fetchPytubeInfo(url);
+      console.log('[INFO] pytubefix success');
+      return res.json(info);
+    } catch (pyErr) {
+      console.error('[ERROR] pytubefix failed:', pyErr.message);
+      return res.status(400).json({ error: 'YouTube fetch failed', details: pyErr.message });
+    }
+  }
+
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
   console.log(`[INFO] Cookies loaded: ${hasCookies}`);
-
-  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
   const args = [
     '--dump-json',
@@ -382,10 +415,12 @@ app.post('/api/info', async (req, res) => {
 
 // Download to a temp file, then stream to client.
 async function streamDownload(res, req, url, format_id, isAudio, title) {
-  const isPytube = format_id && format_id.startsWith('pytube_');
+  const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
+  const isPytube = (format_id && format_id.startsWith('pytube_')) || isYouTube;
 
   if (isPytube) {
-    const itag = format_id.replace('pytube_', '');
+    const itag = format_id && format_id.startsWith('pytube_') ? format_id.replace('pytube_', '') : format_id;
+    const pot = await getPoToken();
     const tmpId = uuidv4();
     const ext = isAudio ? 'mp3' : 'mp4';
     const tmpFile = path.join(os.tmpdir(), `pytube_${tmpId}.${ext}`);
@@ -393,7 +428,11 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
 
     console.log(`[DOWNLOAD] via pytubefix: itag=${itag}`);
-    const proc = spawn(pythonCmd, [pyPath, 'download', url, itag, tmpFile]);
+    const args = ['download', url, itag || 'best', tmpFile];
+    if (pot) {
+      args.push(pot.poToken, pot.visitorData);
+    }
+    const proc = spawn(pythonCmd, [pyPath, ...args]);
 
     proc.stderr.on('data', d => console.log(`[pytube log] ${d}`));
 
