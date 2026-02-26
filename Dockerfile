@@ -6,8 +6,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install the latest nightly yt-dlp, plus curl-cffi, PO token provider, and pytubefix
-RUN pip3 install --no-cache-dir -U --pre yt-dlp curl-cffi bgutil-ytdlp-pot-provider pytubefix aiohttp
+# Install dependencies: yt-dlp, curl-cffi, PO token provider
+RUN pip3 install --no-cache-dir -U --pre yt-dlp curl-cffi bgutil-ytdlp-pot-provider aiohttp
+
+# Install pytubefix separately with --no-deps to avoid nodejs-wheel-binaries conflict
+# since node is already provided by the base image
+RUN pip3 install --no-cache-dir pytubefix --no-deps
 
 # Set working directory to the API server
 WORKDIR /app
@@ -16,9 +20,9 @@ COPY . .
 # Install main Node dependencies
 RUN npm install --omit=dev
 
-# Expose standard port
-EXPOSE 3000
-ENV PORT=3000
+# Koyeb usually expects port 8000 or the PORT env var
+EXPOSE 8000
+ENV PORT=8000
 
 # Start the server
 CMD ["npm", "start"]
