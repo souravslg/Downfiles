@@ -41,7 +41,7 @@ RUN npm install --omit=dev
 # Install dependencies and build POT provider
 WORKDIR /app/bgutil-ytdlp-pot-provider/server
 RUN npm install
-RUN npx tsc
+RUN ./node_modules/.bin/tsc
 
 # Set working directory back to /app
 WORKDIR /app
