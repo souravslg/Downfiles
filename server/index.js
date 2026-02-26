@@ -69,10 +69,9 @@ function getCookiesArgs() {
 function getYouTubeClient() {
   if (process.env.YOUTUBE_CLIENT) return process.env.YOUTUBE_CLIENT;
 
-  // The default yt-dlp 'android' client completely ignores cookies.
-  // We MUST use the 'web' client if the user has provided cookies, otherwise the datacenter IP gets blocked.
   const hasCookies = fs.existsSync(COOKIES_TMP_PATH);
-  return hasCookies ? 'web' : 'android_vr';
+  // Default android client drops cookies. Use web if we have cookies, else fallback to android
+  return hasCookies ? 'web' : 'android';
 }
 
 // Returns extractor-args array only when a non-default client is set
