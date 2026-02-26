@@ -1,8 +1,5 @@
-# Build Version: 2026-02-27-v1
-FROM node:20-bookworm
-
-# Use root user for system setup
-USER root
+# Build Version: 2026-02-27-v2
+FROM node:20-bookworm@sha256:65b74d0fb42134c49530a8c34e9f3e4a2fb8e1f99ac4a0eb4e6f314b426183a2
 
 # Install Python and all required build tools + libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,9 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up a virtual environment for Python
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Python packages
 RUN pip install --no-cache-dir -U --pre yt-dlp
@@ -39,18 +35,11 @@ RUN npm install --omit=dev
 # Copy source
 COPY . .
 
-# Build POT provider server
-WORKDIR /app/bgutil-ytdlp-pot-provider/server
-RUN npm install
-RUN npx -p typescript tsc
-
-# Back to /app
-WORKDIR /app
+# Ensure start.sh is executable
 RUN chmod +x start.sh
 
 # Ports
 EXPOSE 8000
-EXPOSE 4416
 ENV PORT=8000
 
 # Start command

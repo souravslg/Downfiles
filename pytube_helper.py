@@ -6,18 +6,15 @@ from pytubefix import YouTube
 def get_info(url, po_token=None, visitor_data=None):
     try:
         # Pytubefix 10.3.8+ handles po_token more internally now.
-        # Passing use_po_token/po_token_verifier is deprecated and can cause issues.
+        # Passing them to constructor triggers a deprecation warning (or error for user).
+        # Setting them AFTER init bypasses the constructor warning block.
         yt = YouTube(url)
         
-        # If we have external tokens, we can try to inject them if needed,
-        # but pytubefix usually manages this itself via botGuard now.
-        if po_token and visitor_data:
-            # Injecting into InnerTube cache if we have them
-            from pytubefix.innertube import InnerTube
-            it = InnerTube('WEB')
-            it.access_visitorData = visitor_data
-            it.access_po_token = po_token
-            # Note: This might not be officially supported but mimics internal behavior
+        if po_token:
+            yt.use_po_token = True
+            def verifier(arg=None):
+                return visitor_data, po_token
+            yt.po_token_verifier = verifier
             
         formats = []
         for s in yt.streams:
@@ -47,12 +44,13 @@ def get_info(url, po_token=None, visitor_data=None):
 
 def download(url, itag, output_path, po_token=None, visitor_data=None):
     try:
-        # Avoid deprecated po_token parameters
+        # Bypass constructor warning
         yt = YouTube(url)
-        
-        # If po_token provided, ensure it's used
         if po_token:
-            yt.po_token = po_token
+            yt.use_po_token = True
+            def verifier(arg=None):
+                return visitor_data, po_token
+            yt.po_token_verifier = verifier
             
         stream = None
         # If itag is 'best', find the best adaptive video or progressive
