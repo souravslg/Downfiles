@@ -581,9 +581,9 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
       // Find what file yt-dlp actually created
       let tmpFiles = fs.readdirSync(require('os').tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
       if (tmpFiles.length > 0) {
-        // Prioritize actual video containers over audio streams in case of unmerged files
+        // Prioritize merged containers over base containers in case of unmerged files left behind
         tmpFiles.sort((a, b) => {
-          const score = f => f.endsWith('.mp4') ? 1 : f.endsWith('.mkv') ? 2 : f.endsWith('.webm') ? 3 : 4;
+          const score = f => f.endsWith('.mkv') ? 1 : f.endsWith('.webm') ? 2 : f.endsWith('.mp4') ? 3 : 4;
           return score(a) - score(b);
         });
         sendFile = require('path').join(require('os').tmpdir(), tmpFiles[0]);
@@ -602,8 +602,13 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
 
     const cleanup = (f) => { try { fs.unlinkSync(f); } catch { } };
 
-    setDownloadFilename(res, title, ext);
-    res.setHeader('Content-Type', contentType);
+    const actualExt = sendFile.split('.').pop() || ext;
+    let actualContentType = contentType;
+    if (actualExt === 'mkv') actualContentType = 'video/x-matroska';
+    if (actualExt === 'webm') actualContentType = 'video/webm';
+
+    setDownloadFilename(res, title, actualExt);
+    res.setHeader('Content-Type', actualContentType);
     res.setHeader('Cache-Control', 'no-store');
 
     const stream = fs.createReadStream(sendFile);
