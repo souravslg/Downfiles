@@ -210,9 +210,11 @@ function buildFormatArg(format_id, isAudio, isSocial) {
   }
 
   if (HAS_FFMPEG) {
-    // If social platform, be even more aggressive about pairing
+    // For social platforms (Instagram/Facebook): prefer pre-merged formats with audio first,
+    // then fall back to bestvideo+bestaudio merge. This prevents silent video on Instagram
+    // where yt-dlp may pick a video-only stream when split streams are listed first.
     if (isSocial) {
-      return 'bestvideo+bestaudio/best[acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best';
+      return 'best[acodec!=none][ext=mp4]/best[acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
     }
     return 'bestvideo+bestaudio/best[acodec!=none]/best';
   }
