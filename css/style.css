@@ -34,6 +34,13 @@ html {
   overflow-x: hidden;
 }
 
+@media (min-width: 1024px) {
+  html {
+    font-size: 110%;
+    /* Scales all rem units proportionately up for desktop */
+  }
+}
+
 @keyframes slowGradient {
   0% {
     background-position: 0% 50%;
