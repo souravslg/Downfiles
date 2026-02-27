@@ -203,10 +203,12 @@ function spawnYtDlp(args, options = {}) {
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
 
-  // Guarantee node's location and system bins are in PATH for yt-dlp to find FFMPEG and Node
+  // Ensure process.env.PATH (with venv) is prioritized over system paths
   const nodeDir = path.dirname(process.execPath);
   const systemPaths = process.platform === 'win32' ? '' : '/usr/local/bin:/usr/bin:/bin';
-  const pathEnv = [systemPaths, nodeDir, process.env.PATH].filter(Boolean).join(path.delimiter);
+  const pathEnv = [process.env.PATH, nodeDir, systemPaths].filter(Boolean).join(path.delimiter);
+
+  if (options.debugPath) console.log(`[EXEC] PATH: ${pathEnv}`);
 
   const env = {
     ...process.env,
