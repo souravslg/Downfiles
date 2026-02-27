@@ -225,6 +225,9 @@ function buildFormatArg(format_id, isAudio, isSocial) {
   if (format_id && format_id !== 'auto') {
     if (HAS_FFMPEG) {
       // Force pairing with bestaudio if it's a social platform or DASH
+      if (isSocial) {
+        return `${format_id}+bestaudio/[ext=m4a]/${format_id}+bestaudio/best`;
+      }
       return `${format_id}+bestaudio/${format_id}[acodec!=none]/bestvideo+bestaudio/best[acodec!=none]/best`;
     }
     return `${format_id}[acodec!=none]/best[acodec!=none]/best`;
