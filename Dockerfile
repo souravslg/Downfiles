@@ -35,6 +35,9 @@ RUN npm install --omit=dev
 # Copy source
 COPY . .
 
+# Build the PO Token Provider
+RUN cd bgutil-ytdlp-pot-provider/server && npm install && npm run build && cd /app
+
 # Ensure start.sh is executable
 RUN chmod +x start.sh
 
