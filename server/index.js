@@ -222,7 +222,17 @@ function buildFormatArg(format_id, isAudio, isSocial) {
     return 'bestaudio[ext=m4a]/bestaudio';
   }
 
+  // Treat generic fallback IDs from UI directly as 'auto'
+  if (format_id === '(bestvideo+bestaudio)' || format_id === 'bestvideo+bestaudio' || format_id === 'best') {
+    format_id = 'auto';
+  }
+
   if (format_id && format_id !== 'auto') {
+    // If the format_id natively includes audio or a merge request, use it as is
+    if (format_id.includes('audio') || format_id.includes('+')) {
+      return `${format_id}/best[acodec!=none]/best`;
+    }
+
     if (HAS_FFMPEG) {
       // Force pairing with bestaudio if it's a social platform or DASH
       if (isSocial) {
