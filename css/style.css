@@ -39,6 +39,10 @@ html {
     font-size: 110%;
     /* Scales all rem units proportionately up for desktop */
   }
+
+  .hero-title {
+    flex-wrap: nowrap;
+  }
 }
 
 @keyframes slowGradient {
