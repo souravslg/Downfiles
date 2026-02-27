@@ -204,7 +204,7 @@ function buildFormatArg(format_id, isAudio, isSocial) {
   if (format_id && format_id !== 'auto') {
     if (HAS_FFMPEG) {
       // Force pairing with bestaudio if it's a social platform or DASH
-      return `(${format_id}+bestaudio)/${format_id}[acodec!=none]/bestvideo+bestaudio/best[acodec!=none]/best`;
+      return `${format_id}+bestaudio/${format_id}[acodec!=none]/bestvideo+bestaudio/best[acodec!=none]/best`;
     }
     return `${format_id}[acodec!=none]/best[acodec!=none]/best`;
   }
@@ -212,7 +212,7 @@ function buildFormatArg(format_id, isAudio, isSocial) {
   if (HAS_FFMPEG) {
     // If social platform, be even more aggressive about pairing
     if (isSocial) {
-      return '(bestvideo+bestaudio)/best[acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best';
+      return 'bestvideo+bestaudio/best[acodec!=none]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best';
     }
     return 'bestvideo+bestaudio/best[acodec!=none]/best';
   }
