@@ -203,9 +203,10 @@ function spawnYtDlp(args, options = {}) {
   const cmd = parts[0];            // e.g. 'python'
   const pre = parts.slice(1);      // e.g. ['-m', 'yt_dlp']
 
-  // Guarantee node's location is in PATH for yt-dlp to find the JS Challenge Provider
+  // Guarantee node's location and system bins are in PATH for yt-dlp to find FFMPEG and Node
   const nodeDir = path.dirname(process.execPath);
-  const pathEnv = [nodeDir, process.env.PATH].filter(Boolean).join(path.delimiter);
+  const systemPaths = process.platform === 'win32' ? '' : '/usr/local/bin:/usr/bin:/bin';
+  const pathEnv = [nodeDir, process.env.PATH, systemPaths].filter(Boolean).join(path.delimiter);
 
   const env = {
     ...process.env,
