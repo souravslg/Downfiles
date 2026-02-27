@@ -124,7 +124,9 @@ function getExtractorArgs(url) {
     return ['--impersonate', 'chrome', '--no-check-certificate', '--geo-bypass'];
   }
   if (url.includes('instagram.com')) {
-    return ['--impersonate', 'chrome', '--no-check-certificate', '--geo-bypass'];
+    // Instagram on datacenter IPs aggressively blocks Chrome impersonation without cookies. 
+    // Safari impersonation with extra sleep sometimes bypasses the rate-limit blocks.
+    return ['--impersonate', 'safari', '--no-check-certificate', '--sleep-requests', '1'];
   }
 
   return [];
@@ -164,9 +166,7 @@ function getImpersonationArgs(url) {
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
   if (isYouTube) return [];
 
-  const isSocial = url.includes('facebook.com') || url.includes('fb.com') ||
-    url.includes('instagram.com') || url.includes('twitter.com') ||
-    url.includes('tiktok.com');
+  const isSocial = url.includes('twitter.com') || url.includes('tiktok.com');
 
   if (isSocial) {
     // yt-dlp newer versions support --impersonate which is much more robust than just UA headers
@@ -385,8 +385,8 @@ app.post('/api/info', async (req, res) => {
         friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
       } else if (errOutput.includes('Sign in') || errOutput.includes('private')) {
         friendly = 'This video is private or requires sign-in.';
-      } else if (errOutput.includes('Requested format is not available')) {
-        friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible (Bot verification blocked).';
+      } else if (errOutput.includes('Requested format is not available') || errOutput.includes('rate-limit reached') || errOutput.includes('login required')) {
+        friendly = 'Instagram/YouTube is currently blocking download attempts from this server. Please set up INSTAGRAM_COOKIES or YOUTUBE_COOKIES in the server environment variables to bypass this.';
       } else if (errOutput.includes('not available in your country') || errOutput.includes('not available in your region')) {
         friendly = 'This video is unavailable in your region or has been removed.';
       }
