@@ -576,29 +576,26 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     }
 
     // Stream the temp file to client, then delete it
-    // Wait: what if yt-dlp renamed it? Let's check if it exists:
-    let sendFile = tmpFile;
-    if (!fs.existsSync(sendFile)) {
-      // Find what file yt-dlp actually created
-      let tmpFiles = fs.readdirSync(require('os').tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
-      if (tmpFiles.length > 0) {
-        // Prioritize merged containers over base containers in case of unmerged files left behind
-        tmpFiles.sort((a, b) => {
-          const score = f => f.endsWith('.mkv') ? 1 : f.endsWith('.webm') ? 2 : f.endsWith('.mp4') ? 3 : 4;
-          return score(a) - score(b);
+    // Always find what file yt-dlp actually created to avoid serving unmerged remnants when mkv exists
+    let sendFile = null;
+    let tmpFiles = fs.readdirSync(require('os').tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
+    if (tmpFiles.length > 0) {
+      // Prioritize merged containers over base containers in case of unmerged files left behind
+      tmpFiles.sort((a, b) => {
+        const score = f => f.endsWith('.mkv') ? 1 : f.endsWith('.webm') ? 2 : f.endsWith('.mp4') ? 3 : 4;
+        return score(a) - score(b);
+      });
+      sendFile = require('path').join(require('os').tmpdir(), tmpFiles[0]);
+    } else {
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: 'Downloaded file not found on server.',
+          tmpFileTried: tmpFile,
+          ytdlpStderr: errOutput,
+          ytdlpStdout: stdOutput
         });
-        sendFile = require('path').join(require('os').tmpdir(), tmpFiles[0]);
-      } else {
-        if (!res.headersSent) {
-          return res.status(500).json({
-            error: 'Downloaded file not found on server.',
-            tmpFileTried: tmpFile,
-            ytdlpStderr: errOutput,
-            ytdlpStdout: stdOutput
-          });
-        }
-        return;
       }
+      return;
     }
 
     const cleanup = (f) => { try { fs.unlinkSync(f); } catch { } };
