@@ -29,6 +29,7 @@ const os = require('os');
 const COOKIES_TMP_PATH = path.join(os.tmpdir(), 'yt_cookies.txt');
 
 function getCookiesArgs() {
+  const args = [];
   let base64Cookies = (process.env.YOUTUBE_COOKIES || '').trim().replace(/^["']|["']$/g, '');
   if (!base64Cookies) {
     for (let i = 1; i <= 10; i++) {
@@ -48,7 +49,7 @@ function getCookiesArgs() {
       const cookieString = Buffer.from(base64Cookies, 'base64').toString('utf-8');
       if (cookieString.trim().startsWith('# Netscape HTTP Cookie File')) {
         fs.writeFileSync(COOKIES_TMP_PATH, cookieString, { encoding: 'utf-8' });
-        return ['--cookies', COOKIES_TMP_PATH];
+        args.push('--cookies', COOKIES_TMP_PATH);
       } else {
         console.warn('[WARN] YOUTUBE_COOKIES is corrupted or not in Netscape format. Ignoring.');
       }
@@ -58,21 +59,41 @@ function getCookiesArgs() {
   } else if (fs.existsSync(COOKIES_TMP_PATH)) {
     const localCookies = fs.readFileSync(COOKIES_TMP_PATH, 'utf-8');
     if (localCookies.startsWith('# Netscape HTTP Cookie File')) {
-      return ['--cookies', COOKIES_TMP_PATH];
+      args.push('--cookies', COOKIES_TMP_PATH);
+    }
+  } else {
+    // Fallback for Localhost Testing
+    const LOCAL_COOKIES_PATH = path.join(__dirname, '..', 'cookie_base.txt');
+    if (fs.existsSync(LOCAL_COOKIES_PATH)) {
+      const localTestCookies = fs.readFileSync(LOCAL_COOKIES_PATH, 'utf-8');
+      if (localTestCookies.startsWith('# Netscape HTTP Cookie File')) {
+        console.log('[INFO] Using local cookie_base.txt for authentication bypass');
+        args.push('--cookies', LOCAL_COOKIES_PATH);
+      }
     }
   }
 
-  // Fallback for Localhost Testing
-  const LOCAL_COOKIES_PATH = path.join(__dirname, '..', 'cookie_base.txt');
-  if (fs.existsSync(LOCAL_COOKIES_PATH)) {
-    const localTestCookies = fs.readFileSync(LOCAL_COOKIES_PATH, 'utf-8');
-    if (localTestCookies.startsWith('# Netscape HTTP Cookie File')) {
-      console.log('[INFO] Using local cookie_base.txt for authentication bypass');
-      return ['--cookies', LOCAL_COOKIES_PATH];
+  // Also support Instagram specific cookies if they exist in env or locally
+  let igBase64Cookies = (process.env.INSTAGRAM_COOKIES || '').trim().replace(/^["']|["']$/g, '');
+  if (igBase64Cookies) {
+    try {
+      const igCookieString = Buffer.from(igBase64Cookies, 'base64').toString('utf-8');
+      if (igCookieString.trim().startsWith('# Netscape HTTP Cookie File')) {
+        const IG_COOKIES_TMP_PATH = path.join(os.tmpdir(), 'ig_cookies_tmp.txt');
+        fs.writeFileSync(IG_COOKIES_TMP_PATH, igCookieString, { encoding: 'utf-8' });
+        args.push('--cookies', IG_COOKIES_TMP_PATH);
+      }
+    } catch (err) {
+      console.error('[ERROR] Failed to write INSTAGRAM_COOKIES dynamically:', err.message);
+    }
+  } else {
+    const IG_LOCAL_COOKIES_PATH = path.join(__dirname, '..', 'ig_cookies.txt');
+    if (fs.existsSync(IG_LOCAL_COOKIES_PATH)) {
+      args.push('--cookies', IG_LOCAL_COOKIES_PATH);
     }
   }
 
-  return [];
+  return args;
 }
 
 // --- Deleted proxy logic ---
