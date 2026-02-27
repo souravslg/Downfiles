@@ -3,19 +3,28 @@ import json
 import os
 from pytubefix import YouTube
 
+def apply_tokens(yt, p_tok, v_dat):
+    if p_tok:
+        yt.use_po_token = True
+        def verifier(arg=None):
+            return v_dat, p_tok
+        yt.po_token_verifier = verifier
+
 def get_info(url, po_token=None, visitor_data=None):
     try:
-        # Pytubefix 10.3.8+ handles po_token more internally now.
-        # Passing them to constructor triggers a deprecation warning (or error for user).
-        # Setting them AFTER init bypasses the constructor warning block.
         yt = YouTube(url)
-        
-        if po_token:
-            yt.use_po_token = True
-            def verifier(arg=None):
-                return visitor_data, po_token
-            yt.po_token_verifier = verifier
+        apply_tokens(yt, po_token, visitor_data)
             
+        try:
+            # Trigger metadata fetch which might raise BotDetection
+            _ = yt.title
+            _ = yt.streams
+        except Exception as e:
+            if "detected as a bot" in str(e).lower() or "BotDetection" in str(e):
+                print(f"[DEBUG] BotDetection raised. Provided po_token length: {len(po_token) if po_token else 0}", file=sys.stderr)
+                raise e
+            raise e
+
         formats = []
         for s in yt.streams:
             formats.append({
@@ -37,20 +46,22 @@ def get_info(url, po_token=None, visitor_data=None):
             "formats": formats
         }
     except Exception as e:
-        # Log the full error to stdout for debugging, but return error to caller
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
 
 def download(url, itag, output_path, po_token=None, visitor_data=None):
     try:
-        # Bypass constructor warning
         yt = YouTube(url)
-        if po_token:
-            yt.use_po_token = True
-            def verifier(arg=None):
-                return visitor_data, po_token
-            yt.po_token_verifier = verifier
+        apply_tokens(yt, po_token, visitor_data)
+        
+        # Catch bot detection early during download too
+        try:
+            _ = yt.streams
+        except Exception as e:
+            if "detected as a bot" in str(e).lower() or "BotDetection" in str(e):
+                raise e
+            raise e
             
         stream = None
         # If itag is 'best', find the best adaptive video or progressive
@@ -108,6 +119,8 @@ def download(url, itag, output_path, po_token=None, visitor_data=None):
         path = stream.download(output_path=os.path.dirname(output_path), filename=os.path.basename(output_path))
         return {"path": path}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
 
 if __name__ == "__main__":

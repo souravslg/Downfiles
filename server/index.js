@@ -298,28 +298,45 @@ async function getPoToken() {
 }
 
 async function fetchPytubeInfo(url) {
-  const pot = await getPoToken();
-  return new Promise((resolve, reject) => {
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
-    const args = ['info', url];
-    if (pot) {
-      // placeholders for itag and path
-      args.push('none', 'none', pot.poToken, pot.visitorData);
-    }
-    const proc = spawn(pythonCmd, [pyPath, ...args]);
-    let stdout = '', stderr = '';
-    proc.stdout.on('data', d => stdout += d);
-    proc.stderr.on('data', d => stderr += d);
-    proc.on('close', code => {
-      if (code !== 0) return reject(new Error(stderr || 'Pytube failed'));
-      try {
-        const info = JSON.parse(stdout);
-        info.formats = (info.formats || []).map(f => ({ ...f, format_id: 'pytube_' + f.format_id }));
-        resolve(info);
-      } catch (e) { reject(e); }
+  const tryFetch = async (currentPot) => {
+    return new Promise((resolve, reject) => {
+      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+      const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
+      const args = ['info', url];
+      if (currentPot) {
+        // placeholders for itag and path
+        args.push('none', 'none', currentPot.poToken, currentPot.visitorData);
+      }
+      const proc = spawn(pythonCmd, [pyPath, ...args]);
+      let stdout = '', stderr = '';
+      proc.stdout.on('data', d => stdout += d);
+      proc.stderr.on('data', d => stderr += d);
+      proc.on('close', code => {
+        if (code !== 0) return reject(new Error(stderr || 'Pytube failed'));
+        try {
+          const info = JSON.parse(stdout);
+          info.formats = (info.formats || []).map(f => ({ ...f, format_id: 'pytube_' + f.format_id }));
+          resolve(info);
+        } catch (e) { reject(e); }
+      });
     });
-  });
+  };
+
+  try {
+    const initialPot = await getPoToken();
+    return await tryFetch(initialPot);
+  } catch (err) {
+    if (err.message.includes('BotDetection') || err.message.toLowerCase().includes('detected as a bot')) {
+      console.log('[INFO] Bot detected, trying one more time with a fresh PO Token...');
+      try {
+        const freshPot = await getPoToken(); // Requesting fresh pot
+        return await tryFetch(freshPot);
+      } catch (retryErr) {
+        throw retryErr;
+      }
+    }
+    throw err;
+  }
 }
 
 // Cobalt fallback removed as per user request to use yt-dlp only.
@@ -469,42 +486,74 @@ app.post('/api/info', async (req, res) => {
 });
 
 // Download to a temp file, then stream to client.
+async function fetchPytubeDownload(url, itag, title, isAudio, res, req) {
+  const tryDownload = async (currentPot) => {
+    return new Promise((resolve, reject) => {
+      const tmpId = uuidv4();
+      const ext = isAudio ? 'mp3' : 'mp4';
+      const tmpFile = path.join(os.tmpdir(), `pytube_${tmpId}.${ext}`);
+      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+      const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
+
+      console.log(`[DOWNLOAD] via pytubefix: itag=${itag}`);
+      const args = ['download', url, itag || 'best', tmpFile];
+      if (currentPot) {
+        args.push(currentPot.poToken, currentPot.visitorData);
+      }
+      const proc = spawn(pythonCmd, [pyPath, ...args]);
+      let stderr = '';
+      proc.stderr.on('data', d => {
+        stderr += d.toString();
+        console.log(`[pytube log] ${d}`);
+      });
+
+      req.on('close', () => proc.kill());
+
+      proc.on('close', (code) => {
+        if (code !== 0 || !fs.existsSync(tmpFile)) {
+          return reject(new Error(stderr || 'Pytube download failed'));
+        }
+        resolve({ tmpFile, ext });
+      });
+    });
+  };
+
+  try {
+    const initialPot = await getPoToken();
+    const { tmpFile, ext } = await tryDownload(initialPot);
+    setDownloadFilename(res, title, ext);
+    res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
+    const stream = fs.createReadStream(tmpFile);
+    stream.on('end', () => { try { fs.unlinkSync(tmpFile); } catch (e) { } });
+    stream.pipe(res);
+  } catch (err) {
+    if (err.message.includes('BotDetection') || err.message.toLowerCase().includes('detected as a bot')) {
+      console.log('[INFO] Bot detected during download, trying one more time with a fresh PO Token...');
+      try {
+        const freshPot = await getPoToken();
+        const { tmpFile, ext } = await tryDownload(freshPot);
+        setDownloadFilename(res, title, ext);
+        res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
+        const stream = fs.createReadStream(tmpFile);
+        stream.on('end', () => { try { fs.unlinkSync(tmpFile); } catch (e) { } });
+        stream.pipe(res);
+      } catch (retryErr) {
+        if (!res.headersSent) res.status(500).send('Pytube download failed after retry: ' + retryErr.message);
+      }
+    } else {
+      if (!res.headersSent) res.status(500).send('Pytube download failed: ' + err.message);
+    }
+  }
+}
+
+// Download to a temp file, then stream to client.
 async function streamDownload(res, req, url, format_id, isAudio, title) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
   const isPytube = (format_id && format_id.startsWith('pytube_')) || isYouTube;
 
   if (isPytube) {
     const itag = format_id && format_id.startsWith('pytube_') ? format_id.replace('pytube_', '') : format_id;
-    const pot = await getPoToken();
-    const tmpId = uuidv4();
-    const ext = isAudio ? 'mp3' : 'mp4';
-    const tmpFile = path.join(os.tmpdir(), `pytube_${tmpId}.${ext}`);
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-    const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
-
-    console.log(`[DOWNLOAD] via pytubefix: itag=${itag}`);
-    const args = ['download', url, itag || 'best', tmpFile];
-    if (pot) {
-      args.push(pot.poToken, pot.visitorData);
-    }
-    const proc = spawn(pythonCmd, [pyPath, ...args]);
-
-    proc.stderr.on('data', d => console.log(`[pytube log] ${d}`));
-
-    req.on('close', () => proc.kill());
-
-    proc.on('close', (code) => {
-      if (code !== 0 || !fs.existsSync(tmpFile)) {
-        if (!res.headersSent) res.status(500).send('Pytube download failed');
-        return;
-      }
-
-      setDownloadFilename(res, title, ext);
-      res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
-      const stream = fs.createReadStream(tmpFile);
-      stream.on('end', () => { try { fs.unlinkSync(tmpFile); } catch (e) { } });
-      stream.pipe(res);
-    });
+    await fetchPytubeDownload(url, itag, title, isAudio, res, req);
     return;
   }
 
