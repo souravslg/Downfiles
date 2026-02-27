@@ -528,7 +528,13 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
     if (FFMPEG_PATH !== 'ffmpeg') {
       args.push('--ffmpeg-location', FFMPEG_PATH);
     }
-    if (!isAudio) args.push('--merge-output-format', 'mp4');
+    if (!isAudio) {
+      if (isSocial) {
+        args.push('--merge-output-format', 'mkv');
+      } else {
+        args.push('--merge-output-format', 'mp4');
+      }
+    }
   }
 
   args.push(url);
