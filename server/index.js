@@ -206,7 +206,7 @@ function spawnYtDlp(args, options = {}) {
   // Guarantee node's location and system bins are in PATH for yt-dlp to find FFMPEG and Node
   const nodeDir = path.dirname(process.execPath);
   const systemPaths = process.platform === 'win32' ? '' : '/usr/local/bin:/usr/bin:/bin';
-  const pathEnv = [nodeDir, process.env.PATH, systemPaths].filter(Boolean).join(path.delimiter);
+  const pathEnv = [systemPaths, nodeDir, process.env.PATH].filter(Boolean).join(path.delimiter);
 
   const env = {
     ...process.env,
@@ -586,6 +586,7 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
         return score(a) - score(b);
       });
       sendFile = require('path').join(require('os').tmpdir(), tmpFiles[0]);
+      console.log(`[DOWNLOAD] Found files: ${tmpFiles.join(', ')} | Chose: ${tmpFiles[0]}`);
     } else {
       if (!res.headersSent) {
         return res.status(500).json({

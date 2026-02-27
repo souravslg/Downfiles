@@ -39,6 +39,10 @@ html {
     font-size: 110%;
     /* Scales all rem units proportionately up for desktop */
   }
+
+  .hero-title {
+    flex-wrap: nowrap;
+  }
 }
 
 @keyframes slowGradient {
@@ -378,8 +382,7 @@ main {
 .hero-title .plain {
   display: inline-flex;
   justify-content: flex-end;
-  min-width: 260px;
-  /* Gives enough space for the longest word like 'Instagram' */
+  /* min-width: 260px; Removed to prevent wrapping on smaller desktop screens */
 }
 
 .typing-cursor {
