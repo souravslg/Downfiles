@@ -20,7 +20,7 @@ const downloadBtn = document.getElementById('download-btn');
 const audioBtn = document.getElementById('audio-btn');
 
 let currentInfo = null;
-let selectedFormatId = 'auto';
+let selectedFormatId = '';
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
@@ -80,7 +80,7 @@ async function handleSubmit() {
         }
 
         currentInfo = data;
-        selectedFormatId = 'auto';
+        selectedFormatId = '';
         renderResult(data);
     } catch (err) {
         showError('Could not connect to server. Make sure the server is running.');
@@ -142,8 +142,16 @@ function renderResult(info) {
       `).join('');
         }
 
-        qualityGrid.innerHTML = html || '<p style="color:var(--text-muted);font-size:0.875rem">No format list available — Auto mode will pick the best quality.</p>';
+        qualityGrid.innerHTML = html || '<p style="color:var(--text-muted);font-size:0.875rem">No format list available — We will fetch the best available quality for you.</p>';
         qualityGrid.style.display = qualityChoose?.checked ? 'grid' : 'none';
+
+        // Auto-select first format if available
+        if (qualityChoose?.checked) {
+            const firstBtn = qualityGrid.querySelector('.quality-btn');
+            if (firstBtn) {
+                firstBtn.click();
+            }
+        }
     }
 
     if (resultPanel) {

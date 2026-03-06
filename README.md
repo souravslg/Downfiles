@@ -45,7 +45,7 @@ Open **http://localhost:3000** in your browser.
 
 1. Paste any video URL into the input box
 2. Click the **→** button to fetch video info
-3. Choose quality (Auto or manual) and click **⬇️ Download Video** or **🎵 Audio Only**
+3. Choose your preferred quality and click **⬇️ Download Video** or **🎵 Audio Only**
 
 ## API Endpoints
 
