@@ -627,6 +627,6 @@ function startServer(port) {
 
 module.exports = app;
 
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (require.main === module) {
   startServer(PORT);
 }
