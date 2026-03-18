@@ -99,12 +99,8 @@ function getCookiesArgs() {
 // --- Deleted proxy logic ---
 
 function getYouTubeClient() {
-  if (process.env.YOUTUBE_CLIENT) return process.env.YOUTUBE_CLIENT;
-
-  const hasCookies = fs.existsSync(COOKIES_TMP_PATH) || fs.existsSync(path.join(__dirname, '..', 'cookie_base.txt'));
-  // android_vr and tv are currently very resilient.
-  // Use a comma-separated list to let yt-dlp pick the best available or rotate.
-  return hasCookies ? 'web,tv,ios' : 'android_vr,tv,ios';
+  // No longer used for YouTube as we use vidssave.com instead
+  return 'web,tv,ios';
 }
 
 // Returns extractor-args array only when a non-default client is set
@@ -279,67 +275,63 @@ function setDownloadFilename(res, title, ext) {
     `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`);
 }
 
-// --- Pytube helper ---
-async function getPoToken() {
+// --- Vidssave helper ---
+const VIDSSAVE_AUTH = '20250901majwlqo';
+const VIDSSAVE_DOMAIN = 'api-ak.vidssave.com';
+const VIDSSAVE_PARSE_URL = 'https://api.vidssave.com/api/contentsite_api/media/parse';
+const VIDSSAVE_REDIRECT_URL = 'https://api.vidssave.com/api/contentsite_api/media/download_redirect';
+
+async function fetchVidssaveInfo(url) {
   try {
-    const res = await fetch('http://127.0.0.1:4416/get_pot', {
+    const response = await fetch(VIDSSAVE_PARSE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://vidssave.com/',
+        'Origin': 'https://vidssave.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      body: `auth=${VIDSSAVE_AUTH}&domain=${VIDSSAVE_DOMAIN}&origin=source&link=${encodeURIComponent(url)}`
     });
-    if (res.ok) {
-      const data = await res.json();
-      return { poToken: data.poToken, visitorData: data.contentBinding };
-    }
-  } catch (err) {
-    console.warn('[WARN] Failed to fetch PO Token from provider:', err.message);
-  }
-  return null;
-}
 
-async function fetchPytubeInfo(url) {
-  const tryFetch = async (currentPot) => {
-    return new Promise((resolve, reject) => {
-      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-      const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
-      const args = ['info', url];
-      if (currentPot) {
-        // placeholders for itag and path
-        args.push('none', 'none', currentPot.poToken, currentPot.visitorData);
-      }
-      const proc = spawn(pythonCmd, [pyPath, ...args]);
-      let stdout = '', stderr = '';
-      proc.stdout.on('data', d => stdout += d);
-      proc.stderr.on('data', d => stderr += d);
-      proc.on('close', code => {
-        if (code !== 0) return reject(new Error(stderr || 'Pytube failed'));
-        try {
-          const info = JSON.parse(stdout);
-          info.formats = (info.formats || []).map(f => ({ ...f, format_id: 'pytube_' + f.format_id }));
-          resolve(info);
-        } catch (e) { reject(e); }
-      });
-    });
-  };
-
-  try {
-    const initialPot = await getPoToken();
-    return await tryFetch(initialPot);
-  } catch (err) {
-    if (err.message.includes('BotDetection') || err.message.toLowerCase().includes('detected as a bot')) {
-      console.log('[INFO] Bot detected, trying one more time with a fresh PO Token...');
-      try {
-        const freshPot = await getPoToken(); // Requesting fresh pot
-        return await tryFetch(freshPot);
-      } catch (retryErr) {
-        throw retryErr;
-      }
+    const data = await response.json();
+    if (data.status !== 1 || !data.data) {
+      throw new Error(data.message || 'Vidssave API failed');
     }
+
+    const video = data.data;
+    const formats = (video.resources || []).map(r => {
+      let downloadUrl = r.download_url;
+      if (!downloadUrl && r.resource_content) {
+        downloadUrl = `${VIDSSAVE_REDIRECT_URL}?request=${encodeURIComponent(r.resource_content)}`;
+      }
+
+      return {
+        format_id: r.resource_id,
+        ext: (r.format || 'mp4').toLowerCase(),
+        resolution: r.quality || (r.type === 'audio' ? 'audio' : '720p'),
+        filesize: r.size || null,
+        vcodec: r.type === 'video' ? 'h264' : 'none',
+        acodec: r.type === 'audio' ? 'aac' : 'aac',
+        download_url: downloadUrl // Pass this through to the backend for proxying
+      };
+    }).filter(f => f.download_url); // Only include formats with a valid download URL
+
+    return {
+      title: video.title,
+      thumbnail: video.thumbnail,
+      duration: parseInt(video.duration) || 0,
+      uploader: 'YouTube',
+      platform: 'YouTube (Vidssave)',
+      webpage_url: url,
+      formats: formats,
+      best_format: formats.length > 0 ? formats[0].format_id : null
+    };
+  } catch (err) {
+    console.error('[ERROR] Vidssave failed:', err.message);
     throw err;
   }
 }
-
-// Cobalt fallback removed as per user request to use yt-dlp only.
 
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
@@ -361,14 +353,14 @@ app.post('/api/info', async (req, res) => {
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
   if (isYouTube) {
-    console.log('[INFO] Using pytubefix directly for YouTube...');
+    console.log('[INFO] Using Vidssave for YouTube...');
     try {
-      const info = await fetchPytubeInfo(url);
-      console.log('[INFO] pytubefix success');
+      const info = await fetchVidssaveInfo(url);
+      console.log('[INFO] Vidssave success');
       return res.json(info);
-    } catch (pyErr) {
-      console.error('[ERROR] pytubefix failed:', pyErr.message);
-      return res.status(400).json({ error: 'YouTube fetch failed', details: pyErr.message });
+    } catch (vidErr) {
+      console.error('[ERROR] Vidssave failed:', vidErr.message);
+      return res.status(400).json({ error: 'YouTube fetch failed via Vidssave. Please try again later.', details: vidErr.message });
     }
   }
 
@@ -394,22 +386,10 @@ app.post('/api/info', async (req, res) => {
   proc.stdout.on('data', d => { output += d.toString(); });
   proc.stderr.on('data', d => { errOutput += d.toString(); });
 
+
   proc.on('close', async (code) => {
     console.log(`[INFO] yt-dlp exited with code ${code}`);
     if (code !== 0) {
-      if (isYouTube) {
-        console.log('[INFO] yt-dlp failed for YouTube, trying pytubefix...');
-        try {
-          const info = await fetchPytubeInfo(url);
-          console.log('[INFO] pytubefix fallback successful');
-          return res.json(info);
-        } catch (pyErr) {
-          console.error('[ERROR] pytubefix fallback failed:', pyErr.message);
-        }
-      } else {
-        console.log('[INFO] yt-dlp failed and not a YouTube URL, no fallback available.');
-      }
-
       let friendly = 'Could not fetch video info. Make sure the URL is valid and publicly accessible.';
       if (errOutput.includes('DRM protected')) {
         friendly = 'This video is DRM protected (Premium content) and cannot be downloaded.';
@@ -429,15 +409,11 @@ app.post('/api/info', async (req, res) => {
       return res.status(500).json({ error: 'Failed to parse video info', details: errOutput.slice(0, 500) || 'empty output' });
     }
 
-    const isYouTubeVideo = (info.extractor_key || '').toLowerCase().includes('youtube');
-
     const formats = (info.formats || []).filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
       .map(f => {
         const height = f.height || parseInt(f.resolution) || 0;
-        // Let yt-dlp and ffmpeg pick the exact video format ID and merge it with bestaudio later
-        const safeFormatId = f.format_id;
         return {
-          format_id: safeFormatId,
+          format_id: f.format_id,
           ext: f.ext,
           resolution: f.resolution || (height ? `${height}p` : 'audio'),
           filesize: f.filesize || f.filesize_approx || null,
@@ -449,13 +425,9 @@ app.post('/api/info', async (req, res) => {
         };
       })
       .sort((a, b) => {
-        const getH = r => parseInt(r) || 0;
-        const hA = getH(a.resolution);
-        const hB = getH(b.resolution);
-
+        const hA = parseInt(a.resolution) || 0;
+        const hB = parseInt(b.resolution) || 0;
         if (hA !== hB) return hB - hA;
-
-        // Same resolution: prefer combined formats (both video and audio)
         const aCombined = a.vcodec !== 'none' && a.acodec !== 'none';
         const bCombined = b.vcodec !== 'none' && b.acodec !== 'none';
         if (aCombined && !bCombined) return -1;
@@ -463,7 +435,6 @@ app.post('/api/info', async (req, res) => {
         return 0;
       });
 
-    // Deduplicate by resolution
     const seen = new Set();
     const uniqueFormats = formats.filter(f => {
       const key = f.resolution;
@@ -486,75 +457,33 @@ app.post('/api/info', async (req, res) => {
 });
 
 // Download to a temp file, then stream to client.
-async function fetchPytubeDownload(url, itag, title, isAudio, res, req) {
-  const tryDownload = async (currentPot) => {
-    return new Promise((resolve, reject) => {
-      const tmpId = uuidv4();
-      const ext = isAudio ? 'mp3' : 'mp4';
-      const tmpFile = path.join(os.tmpdir(), `pytube_${tmpId}.${ext}`);
-      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-      const pyPath = path.join(__dirname, '..', 'pytube_helper.py');
-
-      console.log(`[DOWNLOAD] via pytubefix: itag=${itag}`);
-      const args = ['download', url, itag || 'best', tmpFile];
-      if (currentPot) {
-        args.push(currentPot.poToken, currentPot.visitorData);
-      }
-      const proc = spawn(pythonCmd, [pyPath, ...args]);
-      let stderr = '';
-      proc.stderr.on('data', d => {
-        stderr += d.toString();
-        console.log(`[pytube log] ${d}`);
-      });
-
-      req.on('close', () => proc.kill());
-
-      proc.on('close', (code) => {
-        if (code !== 0 || !fs.existsSync(tmpFile)) {
-          return reject(new Error(stderr || 'Pytube download failed'));
-        }
-        resolve({ tmpFile, ext });
-      });
-    });
-  };
-
-  try {
-    const initialPot = await getPoToken();
-    const { tmpFile, ext } = await tryDownload(initialPot);
-    setDownloadFilename(res, title, ext);
-    res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
-    const stream = fs.createReadStream(tmpFile);
-    stream.on('end', () => { try { fs.unlinkSync(tmpFile); } catch (e) { } });
-    stream.pipe(res);
-  } catch (err) {
-    if (err.message.includes('BotDetection') || err.message.toLowerCase().includes('detected as a bot')) {
-      console.log('[INFO] Bot detected during download, trying one more time with a fresh PO Token...');
-      try {
-        const freshPot = await getPoToken();
-        const { tmpFile, ext } = await tryDownload(freshPot);
-        setDownloadFilename(res, title, ext);
-        res.setHeader('Content-Type', isAudio ? 'audio/mpeg' : 'video/mp4');
-        const stream = fs.createReadStream(tmpFile);
-        stream.on('end', () => { try { fs.unlinkSync(tmpFile); } catch (e) { } });
-        stream.pipe(res);
-      } catch (retryErr) {
-        if (!res.headersSent) res.status(500).send('Pytube download failed after retry: ' + retryErr.message);
-      }
-    } else {
-      if (!res.headersSent) res.status(500).send('Pytube download failed: ' + err.message);
-    }
-  }
-}
-
-// Download to a temp file, then stream to client.
 async function streamDownload(res, req, url, format_id, isAudio, title) {
   const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
-  const isPytube = (format_id && format_id.startsWith('pytube_')) || isYouTube;
-
-  if (isPytube) {
-    const itag = format_id && format_id.startsWith('pytube_') ? format_id.replace('pytube_', '') : format_id;
-    await fetchPytubeDownload(url, itag, title, isAudio, res, req);
-    return;
+  if (isYouTube) {
+    try {
+      console.log('[DOWNLOAD] Fetching via Vidssave...');
+      const vidInfo = await fetchVidssaveInfo(url);
+      const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
+      if (!targetFormat) throw new Error('Format not found for Vidssave');
+      const downloadUrl = targetFormat.download_url;
+      console.log(`[DOWNLOAD] Proxying Vidssave link: ${downloadUrl}`);
+      const response = await fetch(downloadUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://vidssave.com/'
+        }
+      });
+      if (!response.ok) throw new Error(`Vidssave download link failed: ${response.statusText}`);
+      setDownloadFilename(res, title || vidInfo.title, targetFormat.ext);
+      res.setHeader('Content-Type', targetFormat.ext === 'mp3' ? 'audio/mpeg' : 'video/mp4');
+      const readable = response.body;
+      readable.pipe(res);
+      return;
+    } catch (err) {
+      console.error('[DOWNLOAD] Vidssave error:', err.message);
+      if (!res.headersSent) res.status(500).send('Download failed: ' + err.message);
+      return;
+    }
   }
 
   const isFacebook = url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com');
@@ -567,7 +496,7 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   const contentType = isAudio ? 'audio/mpeg' : 'video/mp4';
 
   const tmpId = uuidv4();
-  const tmpFile = require('path').join(require('os').tmpdir(), `downfiles_${tmpId}.${ext}`);
+  const tmpFile = path.join(os.tmpdir(), `downfiles_${tmpId}.${ext}`);
   const args = [
     '-f', formatArg,
     '--no-playlist',
@@ -581,42 +510,22 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
   ];
 
   args.push('-o', tmpFile);
-
-  if (isAudio) {
-    args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
-  }
+  if (isAudio) args.push('--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0');
 
   if (HAS_FFMPEG) {
-    if (FFMPEG_PATH !== 'ffmpeg') {
-      args.push('--ffmpeg-location', FFMPEG_PATH);
-    }
+    if (FFMPEG_PATH !== 'ffmpeg') args.push('--ffmpeg-location', FFMPEG_PATH);
     if (!isAudio) {
-      if (isSocial) {
-        args.push('--merge-output-format', 'mkv');
-      } else {
-        args.push('--merge-output-format', 'mp4');
-      }
+      if (isSocial) args.push('--merge-output-format', 'mkv');
+      else args.push('--merge-output-format', 'mp4');
     }
   }
 
   args.push(url);
-
   console.log(`[DOWNLOAD] ${url}`);
-  console.log(`  format: ${formatArg} | audio: ${isAudio} | social: ${isSocial} | ffmpeg: ${HAS_FFMPEG}`);
-  console.log(`  tmp: ${tmpFile}`);
-
-  let errOutput = '';
-  let stdOutput = '';
+  let errOutput = '', stdOutput = '';
   const proc = spawnYtDlp(args);
-
-  proc.stderr.on('data', d => {
-    errOutput += d.toString();
-    process.stdout.write('[yt-dlp log] ' + d.toString());
-  });
-  proc.stdout.on('data', d => {
-    stdOutput += d.toString();
-  });
-
+  proc.stderr.on('data', d => { errOutput += d.toString(); });
+  proc.stdout.on('data', d => { stdOutput += d.toString(); });
   req.on('close', () => proc.kill('SIGTERM'));
 
   proc.on('close', (code) => {
@@ -625,47 +534,26 @@ async function streamDownload(res, req, url, format_id, isAudio, title) {
       if (!res.headersSent) res.status(500).send('Download failed: ' + errOutput.slice(0, 200));
       return;
     }
-
-    // Stream the temp file to client, then delete it
-    // Always find what file yt-dlp actually created to avoid serving unmerged remnants when mkv exists
     let sendFile = null;
-    let tmpFiles = fs.readdirSync(require('os').tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
+    let tmpFiles = fs.readdirSync(os.tmpdir()).filter(f => f.includes(`downfiles_${tmpId}`));
     if (tmpFiles.length > 0) {
-      // Prioritize merged containers over base containers in case of unmerged files left behind
       tmpFiles.sort((a, b) => {
         const score = f => f.endsWith('.mkv') ? 1 : f.endsWith('.webm') ? 2 : f.endsWith('.mp4') ? 3 : 4;
         return score(a) - score(b);
       });
-      sendFile = require('path').join(require('os').tmpdir(), tmpFiles[0]);
-      console.log(`[DOWNLOAD] Found files: ${tmpFiles.join(', ')} | Chose: ${tmpFiles[0]}`);
+      sendFile = path.join(os.tmpdir(), tmpFiles[0]);
     } else {
-      if (!res.headersSent) {
-        return res.status(500).json({
-          error: 'Downloaded file not found on server.',
-          tmpFileTried: tmpFile,
-          ytdlpStderr: errOutput,
-          ytdlpStdout: stdOutput
-        });
-      }
+      if (!res.headersSent) return res.status(500).json({ error: 'Downloaded file not found on server.' });
       return;
     }
-
     const cleanup = (f) => { try { fs.unlinkSync(f); } catch { } };
-
     const actualExt = sendFile.split('.').pop() || ext;
     let actualContentType = contentType;
     if (actualExt === 'mkv') actualContentType = 'video/x-matroska';
     if (actualExt === 'webm') actualContentType = 'video/webm';
-
     setDownloadFilename(res, title, actualExt);
     res.setHeader('Content-Type', actualContentType);
-    res.setHeader('Cache-Control', 'no-store');
-
     const stream = fs.createReadStream(sendFile);
-    stream.on('error', (err) => {
-      console.error('[DOWNLOAD] read error:', err.message);
-      if (!res.headersSent) res.status(500).json({ error: 'Failed to read downloaded file', msg: err.message, file: sendFile });
-    });
     stream.on('end', () => cleanup(sendFile));
     stream.pipe(res);
   });
@@ -690,15 +578,13 @@ app.post('/api/download', async (req, res) => {
   await streamDownload(res, req, url, format_id, isAudio, title);
 });
 
-// POST /api/download-link - Get download link (for quality picker)
+// POST /api/download-link - Get download link
 app.post('/api/download-link', (req, res) => {
   const { url, format_id, audio_only } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
-
   const directUrl = `${req.protocol}://${req.get('host')}/api/download?url=${encodeURIComponent(url)}` +
     (format_id ? `&format_id=${encodeURIComponent(format_id)}` : '') +
     (audio_only ? `&audio_only=1` : '');
-
   res.json({ download_url: directUrl });
 });
 
@@ -706,22 +592,13 @@ app.post('/api/download-link', (req, res) => {
 app.get('/api/stream/:jobId', (req, res) => {
   const job = jobs[req.params.jobId];
   if (!job) return res.status(404).json({ error: 'Job not found' });
-
   const { url, format_id, audio_only } = job;
-  let formatArg;
-  if (audio_only) {
-    formatArg = 'bestaudio[ext=m4a]/bestaudio';
-  } else if (format_id && format_id !== 'auto') {
-    formatArg = `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/best`;
-  } else {
-    formatArg = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
-  }
-
+  let formatArg = audio_only ? 'bestaudio[ext=m4a]/bestaudio' :
+    (format_id && format_id !== 'auto' ? `${format_id}+bestaudio[ext=m4a]/${format_id}+bestaudio/best` :
+      'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best');
   const ext = audio_only ? 'mp3' : 'mp4';
   res.setHeader('Content-Disposition', `attachment; filename="download.${ext}"`);
   res.setHeader('Content-Type', audio_only ? 'audio/mpeg' : 'video/mp4');
-
-  const args = ['-f', formatArg, '--no-playlist', '-o', '-', url];
   const proc = spawnYtDlp(['-f', formatArg, '--no-playlist', '-o', '-', url]);
   proc.stdout.pipe(res);
   req.on('close', () => proc.kill());
@@ -733,8 +610,9 @@ app.get('/api/status/:jobId', (req, res) => {
   if (!job) return res.status(404).json({ error: 'Job not found' });
   res.json(job);
 });
+
 function startServer(port) {
-  const server = app.listen(port, () => {
+  app.listen(port, () => {
     console.log(`\n🚀 All In One Downloader server running at http://localhost:${port}\n`);
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
@@ -746,4 +624,9 @@ function startServer(port) {
   });
 }
 
-startServer(PORT);
+
+module.exports = app;
+
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  startServer(PORT);
+}
