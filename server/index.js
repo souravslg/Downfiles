@@ -309,7 +309,8 @@ async function fetchVidssaveInfo(url) {
     console.log('[INFO] Vidssave raw status:', data.status, '| message:', data.message);
 
     if (data.status !== 1 || !data.data) {
-      throw new Error(data.message || 'Vidssave API failed');
+      const errorStr = data.message || JSON.stringify(data);
+      throw new Error(`Vidssave Error (Status: ${data.status}): ${errorStr}`);
     }
 
     const video = data.data;
