@@ -21,6 +21,7 @@ yesterday_server.js
 !package.json
 !package-lock.json
 !info.json
+!vercel.json
 test_*.js
 pytube_info.py
 pytube_helper.py
