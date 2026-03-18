@@ -289,12 +289,25 @@ async function fetchVidssaveInfo(url) {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': 'https://vidssave.com/',
         'Origin': 'https://vidssave.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'X-Requested-With': 'XMLHttpRequest'
       },
       body: `auth=${VIDSSAVE_AUTH}&domain=${VIDSSAVE_DOMAIN}&origin=source&link=${encodeURIComponent(url)}`
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      const text = await response.text().catch(() => '(no body)');
+      console.error('[ERROR] Vidssave non-JSON response. Status:', response.status, 'Body:', text.slice(0, 300));
+      throw new Error(`Vidssave returned non-JSON (HTTP ${response.status})`);
+    }
+
+    console.log('[INFO] Vidssave raw status:', data.status, '| message:', data.message);
+
     if (data.status !== 1 || !data.data) {
       throw new Error(data.message || 'Vidssave API failed');
     }
