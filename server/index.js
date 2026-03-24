@@ -22,7 +22,7 @@ app.use(express.static(path.join(__dirname, '..')));
 
 // --- Vidssave configuration ---
 const VIDSSAVE_AUTH = '20250901majwlqo';
-const VIDSSAVE_DOMAIN = 'api.vidssave.com';
+const VIDSSAVE_DOMAIN = 'api-ak.vidssave.com';
 const VIDSSAVE_PARSE_URL = 'https://api.vidssave.com/api/contentsite_api/media/parse';
 const VIDSSAVE_REDIRECT_URL = 'https://api.vidssave.com/api/contentsite_api/media/download_redirect';
 
@@ -59,7 +59,8 @@ async function fetchVidssaveInfo(url, clientIp) {
     const video = data.data;
     const formats = (video.resources || []).map(r => {
       // The redirect token is in resource_content.
-      const redirectUrl = `${VIDSSAVE_REDIRECT_URL}?request=${encodeURIComponent(r.resource_content || r.download_url)}&auth=${VIDSSAVE_AUTH}&domain=${VIDSSAVE_DOMAIN}`;
+      // Observed domain for redirect is api.vidssave.com
+      const redirectUrl = `${VIDSSAVE_REDIRECT_URL}?request=${encodeURIComponent(r.resource_content || r.download_url)}&auth=${VIDSSAVE_AUTH}&domain=api.vidssave.com`;
       
       return {
         format_id: r.resource_id,
@@ -102,9 +103,12 @@ app.post('/api/info', async (req, res) => {
   let { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
+  // Get client IP for Vidssave (essential for valid redirect tokens)
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+
   try {
-    console.log(`[INFO] Fetching via VidsSave: ${url}`);
-    const info = await fetchVidssaveInfo(url);
+    console.log(`[INFO] Fetching via VidsSave: ${url} (Client IP: ${clientIp})`);
+    const info = await fetchVidssaveInfo(url, clientIp);
     res.json(info);
   } catch (err) {
     console.error('[ERROR] Primary fetch failed:', err.message);
@@ -114,8 +118,9 @@ app.post('/api/info', async (req, res) => {
 
 async function streamDownload(res, req, url, format_id, title) {
   try {
-    console.log('[DOWNLOAD] Fetching info for redirect...', url);
-    const vidInfo = await fetchVidssaveInfo(url);
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    console.log(`[DOWNLOAD] Fetching info for redirect (IP: ${clientIp})...`, url);
+    const vidInfo = await fetchVidssaveInfo(url, clientIp);
 
     const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
     if (!targetFormat) throw new Error('Format not found');
