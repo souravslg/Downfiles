@@ -1,0 +1,15 @@
+node_modules/
+**/*.mp4
+**/*.m4a
+**/*.mkv
+**/*.exe
+**/*.log
+tmp*
+*.json
+!package.json
+!vercel.json
+!package-lock.json
+test*
+*.txt
+*.diff
+server/ffmpeg.exe

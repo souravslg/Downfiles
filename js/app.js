@@ -175,19 +175,18 @@ function triggerDownload(audioOnly) {
     const url = urlInput?.value.trim();
     if (!url || !currentInfo) return;
 
-    // Build GET download URL — server streams the file directly
-    const params = new URLSearchParams({
-        url,
-        format_id: selectedFormatId || 'auto',
-        audio_only: audioOnly ? '1' : '0',
-        title: currentInfo.title || 'downfiles'
-    });
+    // Find the selected format from currentInfo
+    const formats = currentInfo.formats || [];
+    const targetFormat = formats.find(f => f.format_id === selectedFormatId) || formats[0];
 
-    const downloadUrl = `/api/download?${params.toString()}`;
+    if (!targetFormat || !targetFormat.download_url) {
+        showError('Download link not found for this format.');
+        return;
+    }
 
-    // window.open triggers the download because the server sends
-    // Content-Disposition: attachment — works better than anchor click
-    window.open(downloadUrl, '_blank');
+    // Direct redirect to the download provider
+    // This bypasses the Vercel proxy which causes 'Forbidden' errors
+    window.open(targetFormat.download_url, '_blank');
 }
 
 // ===== Helpers =====

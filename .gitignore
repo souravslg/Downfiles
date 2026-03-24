@@ -38,3 +38,4 @@ formats_ios_safari.txt
 formats_tv_embed.txt
 headers.txt
 tmp*.log
+.vercel
