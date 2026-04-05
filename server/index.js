@@ -167,46 +167,31 @@ async function streamDownload(res, req, url, format_id, title) {
     const finalUrl = redirectResponse.url;
     console.log(`[DOWNLOAD] Final Media URL: ${finalUrl}`);
 
-    // Read the first chunk to check if it's a small JSON error like "link is empty"
-    // VidsSave sometimes returns status 200 with an error JSON body.
-    const bodyClone = redirectResponse.body;
-    const reader = bodyClone.getReader();
-    const { done, value } = await reader.read();
-    
-    if (!done && value.length < 500) {
-       const text = new TextDecoder().decode(value);
-       if (text.includes('"status":0') || text.includes('link is empty')) {
-          console.log(`[DOWNLOAD] VidsSave JSON Error detected:`, text);
-          return res.status(400).send('Download link expired. Please refresh page and try again.');
-       }
+    const contentType = redirectResponse.headers.get('content-type') || '';
+    if (contentType.includes('json') || contentType.includes('text/html')) {
+        // VidsSave often returns errors as JSON or small HTML parts even with 200 OK
+        const bodyText = await redirectResponse.text();
+        if (bodyText.includes('"status":0') || bodyText.includes('link is empty')) {
+            console.log(`[DOWNLOAD] VidsSave Error detected via Content-Type:`, bodyText);
+            return res.status(400).send('Download link expired or invalid for this region. Please try again.');
+        }
     }
 
     // Set headers for file download
     const filename = `${title || 'video'}.${targetFormat.ext || 'mp4'}`.replace(/[^a-zA-Z0-9.-]/g, '_');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Type', redirectResponse.headers.get('content-type') || 'application/octet-stream');
+    res.setHeader('Content-Type', contentType || 'application/octet-stream');
     
     const contentLength = redirectResponse.headers.get('content-length');
     if (contentLength) res.setHeader('Content-Length', contentLength);
 
-    // Pipe the remaining data (including the first chunk we read)
-    if (value) res.write(value);
-    
-    async function pipeRemaining() {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!res.write(value)) {
-          await new Promise(resolve => res.once('drain', resolve));
-        }
-      }
+    // Use Readable.fromWeb for the most efficient piping in Node.js 18+
+    if (redirectResponse.body) {
+      Readable.fromWeb(redirectResponse.body).pipe(res);
+    } else {
       res.end();
     }
-    
-    pipeRemaining().catch(err => {
-      console.error('[DOWNLOAD] Pipe failed:', err.message);
-      if (!res.headersSent) res.end();
-    });
+
 
 
   } catch (err) {
