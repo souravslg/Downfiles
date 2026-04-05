@@ -177,17 +177,31 @@ function triggerDownload(audioOnly) {
 
     // Find the selected format from currentInfo
     const formats = currentInfo.formats || [];
-    const targetFormat = formats.find(f => f.format_id === selectedFormatId) || formats[0];
+    let targetFormat = formats.find(f => f.format_id === selectedFormatId);
+    
+    if (!targetFormat && formats.length > 0) {
+        // Fallback to highest quality if auto or none selected
+        targetFormat = formats[0];
+    }
 
-    if (!targetFormat || !targetFormat.download_url) {
-        showError('Download link not found for this format.');
+    if (!targetFormat) {
+        showError('No valid download format found.');
         return;
     }
 
-    // Direct redirect to the download provider
-    // This bypasses the Vercel proxy which causes 'Forbidden' errors
-    window.open(targetFormat.download_url, '_blank');
+    // Use our internal proxy to avoid 'Forbidden' errors and handle Referers/IPs correctly
+    const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&format_id=${encodeURIComponent(targetFormat.format_id)}&title=${encodeURIComponent(currentInfo.title || 'video')}`;
+    
+    // Instead of window.open, we can use a hidden link to trigger download
+    const link = document.createElement('a');
+    link.href = proxyUrl;
+    link.target = '_blank';
+    link.download = (currentInfo.title || 'video') + '.' + (targetFormat.ext || 'mp4');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
+
 
 // ===== Helpers =====
 function isValidUrl(str) {

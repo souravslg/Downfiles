@@ -57,17 +57,26 @@ async function fetchVidssaveInfo(url, clientIp) {
     }
 
     const video = data.data;
-    const formats = (video.resources || []).map(r => {
-      // The redirect token is in resource_content.
-      // Observed domain for redirect is api.vidssave.com
-      const redirectUrl = `${VIDSSAVE_REDIRECT_URL}?request=${encodeURIComponent(r.resource_content || r.download_url)}&auth=${VIDSSAVE_AUTH}&domain=api.vidssave.com`;
+    const resources = video.resources || [];
+    
+    const formats = resources.map(r => {
+      // For YouTube, sometimes it provides a direct download_url (e.g. googlevideo.com)
+      // or a resource_content token. We should prioritize the token for the redirect.
+      const requestToken = r.resource_content || r.download_url;
+      const redirectUrl = `${VIDSSAVE_REDIRECT_URL}?request=${encodeURIComponent(requestToken)}`;
       
+      const vcodec = r.type === 'video' ? 'mp4' : (r.type === 'audio' ? 'none' : 'unknown');
+      const acodec = r.type === 'audio' ? 'mp3' : (r.type === 'video' ? 'aac' : 'unknown');
+
       return {
-        format_id: r.resource_id,
+        format_id: r.resource_id || Math.random().toString(36).substring(7),
         ext: (r.format || 'mp4').toLowerCase(),
-        resolution: r.quality || '720p',
+        resolution: r.quality || 'unknown',
         filesize: r.size || null,
-        download_url: redirectUrl
+        download_url: redirectUrl,
+        vcodec: vcodec,
+        acodec: acodec,
+        note: r.quality
       };
     });
 
@@ -83,8 +92,8 @@ async function fetchVidssaveInfo(url, clientIp) {
     } catch { }
 
     return {
-      title: video.title,
-      thumbnail: video.thumbnail,
+      title: video.title || 'Untitled',
+      thumbnail: video.thumbnail || '',
       duration: parseInt(video.duration) || 0,
       uploader: video.source || platform,
       platform: platform,
@@ -97,6 +106,7 @@ async function fetchVidssaveInfo(url, clientIp) {
     throw err;
   }
 }
+
 
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
@@ -118,21 +128,58 @@ app.post('/api/info', async (req, res) => {
 
 async function streamDownload(res, req, url, format_id, title) {
   try {
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
-    console.log(`[DOWNLOAD] Fetching info for redirect (IP: ${clientIp})...`, url);
-    const vidInfo = await fetchVidssaveInfo(url, clientIp);
+    // When proxying the full stream, we must use the server's own IP for the parse
+    // to ensure we can get the redirect correctly from where we are (the server).
+    console.log(`[DOWNLOAD] Fetching info for proxying (IP: server)...`, url);
+    const vidInfo = await fetchVidssaveInfo(url, null);
 
     const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
     if (!targetFormat) throw new Error('Format not found');
 
     const downloadUrl = targetFormat.download_url;
-    console.log(`[DOWNLOAD] Quality: ${targetFormat.resolution}, Redirecting to: ${downloadUrl}`);
-    return res.redirect(downloadUrl);
+    console.log(`[DOWNLOAD] Fetching redirect: ${downloadUrl}`);
+    
+    // Get the final media location
+    const redirectResponse = await fetch(downloadUrl, {
+      method: 'GET',
+      headers: {
+        'Referer': 'https://vidssave.com/',
+        'Origin': 'https://vidssave.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      },
+      redirect: 'follow' // We follow all redirects to get the actual media stream
+    });
+
+    if (!redirectResponse.ok) {
+       const bodyText = await redirectResponse.text();
+       console.log(`[DOWNLOAD] Final URL failed (${redirectResponse.status}):`, bodyText.substring(0, 200));
+       return res.status(redirectResponse.status).send('Media fetching failed: ' + bodyText);
+    }
+
+    const finalUrl = redirectResponse.url;
+    console.log(`[DOWNLOAD] Final Media URL: ${finalUrl}`);
+
+    // Set headers for file download
+    const filename = `${title || 'video'}.${targetFormat.ext || 'mp4'}`.replace(/[^a-zA-Z0-9.-]/g, '_');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', redirectResponse.headers.get('content-type') || 'application/octet-stream');
+    
+    const contentLength = redirectResponse.headers.get('content-length');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    // Pipe the response body stream to the client
+    if (redirectResponse.body) {
+      Readable.fromWeb(redirectResponse.body).pipe(res);
+    } else {
+      res.end();
+    }
+
   } catch (err) {
     console.error('[DOWNLOAD] error:', err.message);
     if (!res.headersSent) res.status(500).send('Download failed: ' + err.message);
   }
 }
+
 
 
 // GET /api/download
