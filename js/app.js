@@ -180,27 +180,29 @@ function triggerDownload(audioOnly) {
     let targetFormat = formats.find(f => f.format_id === selectedFormatId);
     
     if (!targetFormat && formats.length > 0) {
-        // Fallback to highest quality if auto or none selected
         targetFormat = formats[0];
     }
 
-    if (!targetFormat) {
+    if (!targetFormat || !targetFormat.download_url) {
         showError('No valid download format found.');
         return;
     }
 
-    // Use our internal proxy to avoid 'Forbidden' errors and handle Referers/IPs correctly
-    const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&format_id=${encodeURIComponent(targetFormat.format_id)}&title=${encodeURIComponent(currentInfo.title || 'video')}`;
+    // ON VERCEL: We MUST avoid proxying the media stream because of the 10s timeout.
+    // Instead, we use the VidsSave redirect link directly, which the server has 
+    // already bound to the Client's IP during the /api/info call.
+    // We use rel="noreferrer" to bypass potential Referer blocks from VidsSave.
     
-    // Instead of window.open, we can use a hidden link to trigger download
     const link = document.createElement('a');
-    link.href = proxyUrl;
+    link.href = targetFormat.download_url;
     link.target = '_blank';
+    link.rel = 'noreferrer'; // CRITICAL: Hides our domain from VidsSave/YouTube
     link.download = (currentInfo.title || 'video') + '.' + (targetFormat.ext || 'mp4');
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => document.body.removeChild(link), 100);
 }
+
 
 
 // ===== Helpers =====
