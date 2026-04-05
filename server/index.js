@@ -38,25 +38,30 @@ function generateRandomIp() {
 async function fetchVidssaveInfo(url, clientIp) {
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
     'Referer': 'https://vidssave.com/',
     'Origin': 'https://vidssave.com',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode:': 'cors',
+    'Sec-Fetch-Site': 'same-site'
   };
 
-  // Only use IP spoofing headers if we have a client IP from the frontend.
-  // When 'clientIp' is null (server-side proxying), we don't send these so VidsSave
-  // sees the server's actual IP consistently across parse and redirect calls.
-  if (clientIp) {
-    headers['X-Forwarded-For'] = clientIp;
-    headers['Client-IP'] = clientIp;
-  }
-
+  // We remove IP spoofing for now as it often causes 403s on Vercel due to header conflicts
+  
   try {
     const response = await fetch(VIDSSAVE_PARSE_URL, {
       method: 'POST',
       headers: headers,
       body: `auth=${VIDSSAVE_AUTH}&domain=${VIDSSAVE_DOMAIN}&origin=source&link=${encodeURIComponent(url)}`
     });
+
 
 
     const data = await response.json();
