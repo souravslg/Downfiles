@@ -36,20 +36,28 @@ function generateRandomIp() {
 }
 
 async function fetchVidssaveInfo(url, clientIp) {
-  const ipToUse = clientIp || generateRandomIp();
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Referer': 'https://vidssave.com/',
+    'Origin': 'https://vidssave.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+  };
+
+  // Only use IP spoofing headers if we have a client IP from the frontend.
+  // When 'clientIp' is null (server-side proxying), we don't send these so VidsSave
+  // sees the server's actual IP consistently across parse and redirect calls.
+  if (clientIp) {
+    headers['X-Forwarded-For'] = clientIp;
+    headers['Client-IP'] = clientIp;
+  }
+
   try {
     const response = await fetch(VIDSSAVE_PARSE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://vidssave.com/',
-        'Origin': 'https://vidssave.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'X-Forwarded-For': ipToUse,
-        'Client-IP': ipToUse
-      },
+      headers: headers,
       body: `auth=${VIDSSAVE_AUTH}&domain=${VIDSSAVE_DOMAIN}&origin=source&link=${encodeURIComponent(url)}`
     });
+
 
     const data = await response.json();
     if (data.status !== 1 || !data.data) {
@@ -159,6 +167,20 @@ async function streamDownload(res, req, url, format_id, title) {
     const finalUrl = redirectResponse.url;
     console.log(`[DOWNLOAD] Final Media URL: ${finalUrl}`);
 
+    // Read the first chunk to check if it's a small JSON error like "link is empty"
+    // VidsSave sometimes returns status 200 with an error JSON body.
+    const bodyClone = redirectResponse.body;
+    const reader = bodyClone.getReader();
+    const { done, value } = await reader.read();
+    
+    if (!done && value.length < 500) {
+       const text = new TextDecoder().decode(value);
+       if (text.includes('"status":0') || text.includes('link is empty')) {
+          console.log(`[DOWNLOAD] VidsSave JSON Error detected:`, text);
+          return res.status(400).send('Download link expired. Please refresh page and try again.');
+       }
+    }
+
     // Set headers for file download
     const filename = `${title || 'video'}.${targetFormat.ext || 'mp4'}`.replace(/[^a-zA-Z0-9.-]/g, '_');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -167,12 +189,25 @@ async function streamDownload(res, req, url, format_id, title) {
     const contentLength = redirectResponse.headers.get('content-length');
     if (contentLength) res.setHeader('Content-Length', contentLength);
 
-    // Pipe the response body stream to the client
-    if (redirectResponse.body) {
-      Readable.fromWeb(redirectResponse.body).pipe(res);
-    } else {
+    // Pipe the remaining data (including the first chunk we read)
+    if (value) res.write(value);
+    
+    async function pipeRemaining() {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!res.write(value)) {
+          await new Promise(resolve => res.once('drain', resolve));
+        }
+      }
       res.end();
     }
+    
+    pipeRemaining().catch(err => {
+      console.error('[DOWNLOAD] Pipe failed:', err.message);
+      if (!res.headersSent) res.end();
+    });
+
 
   } catch (err) {
     console.error('[DOWNLOAD] error:', err.message);
