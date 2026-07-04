@@ -48,7 +48,31 @@ function normalizePayload(json) {
   return payload;
 }
 
+function expandYoutubeUrl(url) {
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname === 'youtu.be' || parsedUrl.hostname.endsWith('.youtu.be')) {
+      const videoId = parsedUrl.pathname.substring(1);
+      if (videoId) {
+        let expanded = `https://www.youtube.com/watch?v=${videoId}`;
+        if (parsedUrl.search) {
+          const searchParams = new URLSearchParams(parsedUrl.search);
+          if (searchParams.has('t')) {
+            expanded += `&t=${searchParams.get('t')}`;
+          }
+          if (searchParams.has('list')) {
+            expanded += `&list=${searchParams.get('list')}`;
+          }
+        }
+        return expanded;
+      }
+    }
+  } catch (err) {}
+  return url;
+}
+
 async function fetchTool77Info(url) {
+  const targetUrl = expandYoutubeUrl(url);
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/plain, */*',
@@ -61,7 +85,7 @@ async function fetchTool77Info(url) {
     const response = await fetch(TOOL77_REQUEST_URL, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url: targetUrl })
     });
 
     const data = await response.json();
