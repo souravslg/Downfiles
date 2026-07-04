@@ -34,6 +34,20 @@ function decryptTool77Url(encryptedUrl) {
   }
 }
 
+function normalizePayload(json) {
+  if (!json || typeof json !== 'object') return null;
+  
+  let payload = (json.data !== null && typeof json.data === 'object') ? json.data : json;
+  
+  if (payload && payload.data && typeof payload.data === 'object' && !Array.isArray(payload.audios)) {
+    if (Array.isArray(payload.data.audios) || Array.isArray(payload.data.normals) || payload.data.author !== undefined || payload.data.description !== undefined) {
+      payload = payload.data;
+    }
+  }
+  
+  return payload;
+}
+
 async function fetchTool77Info(url) {
   const headers = {
     'Content-Type': 'application/json',
@@ -55,7 +69,10 @@ async function fetchTool77Info(url) {
       throw new Error(data.message || 'Tool77 request failed');
     }
 
-    const videoData = data.data;
+    const videoData = normalizePayload(data.data);
+    if (!videoData) {
+      throw new Error('Failed to normalize Tool77 data payload');
+    }
     const formats = [];
 
     // 1. Process normals
