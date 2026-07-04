@@ -30,6 +30,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupMobileMenu();
     setupTypingAnimation();
     setupPlaceholderRotation();
+
+    // Check for url parameter in query string (for userscript redirect support)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlQuery = urlParams.get('url');
+    if (urlQuery && urlInput) {
+        urlInput.value = urlQuery;
+        urlInput.dispatchEvent(new Event('input'));
+        handleSubmit();
+    }
 });
 
 // ===== Paste Button =====
@@ -47,7 +56,14 @@ pasteBtn?.addEventListener('click', async () => {
 urlInput?.addEventListener('input', () => {
     const val = urlInput.value.trim();
     clearError();
-    if (!val) { hideResult(); return; }
+    if (!val) { 
+        hideResult(); 
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('url');
+        const query = newUrl.searchParams.toString();
+        window.history.replaceState(null, '', newUrl.pathname + (query ? '?' + query : ''));
+        return; 
+    }
 });
 
 // ===== Submit =====
@@ -78,6 +94,11 @@ async function handleSubmit() {
             showError(errorMsg);
             return;
         }
+
+        // Update URL query parameter in address bar
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('url', url);
+        window.history.replaceState(null, '', newUrl.pathname + '?' + newUrl.searchParams.toString());
 
         currentInfo = data;
         selectedFormatId = '';
