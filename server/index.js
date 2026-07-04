@@ -20,77 +20,96 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, '..')));
 
-// --- Vidssave configuration ---
-const VIDSSAVE_AUTH = '20250901majwlqo';
-const VIDSSAVE_DOMAIN = 'api-ak.vidssave.com';
-const VIDSSAVE_PARSE_URL = 'https://api.vidssave.com/api/contentsite_api/media/parse';
-const VIDSSAVE_REDIRECT_URL = 'https://api.vidssave.com/api/contentsite_api/media/download_redirect';
+// --- Tool77 configuration ---
+const TOOL77_REQUEST_URL = 'https://www.tool77.com/en/v/download/all/request';
 
-function generateRandomIp() {
-  const blocks = [
-    [104, Math.floor(Math.random() * 128), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)],
-    [98, Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)],
-    [76, Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)]
-  ];
-  return blocks[Math.floor(Math.random() * blocks.length)].join('.');
+function decryptTool77Url(encryptedUrl) {
+  if (!encryptedUrl) return '';
+  try {
+    const reversed = encryptedUrl.split('').reverse().join('');
+    return Buffer.from(reversed, 'base64').toString('utf-8');
+  } catch (err) {
+    console.error('Decryption failed for URL:', encryptedUrl, err.message);
+    return encryptedUrl;
+  }
 }
 
-async function fetchVidssaveInfo(url, clientIp) {
+async function fetchTool77Info(url) {
   const headers = {
-    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Type': 'application/json',
     'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Referer': 'https://vidssave.com/',
-    'Origin': 'https://vidssave.com',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Windows"',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode:': 'cors',
-    'Sec-Fetch-Site': 'same-site'
+    'Origin': 'https://www.tool77.com',
+    'Referer': 'https://www.tool77.com/en/v/downloader'
   };
 
-  // We remove IP spoofing for now as it often causes 403s on Vercel due to header conflicts
-  
   try {
-    const response = await fetch(VIDSSAVE_PARSE_URL, {
+    const response = await fetch(TOOL77_REQUEST_URL, {
       method: 'POST',
       headers: headers,
-      body: `auth=${VIDSSAVE_AUTH}&domain=${VIDSSAVE_DOMAIN}&origin=source&link=${encodeURIComponent(url)}`
+      body: JSON.stringify({ url })
     });
 
-
-
     const data = await response.json();
-    if (data.status !== 1 || !data.data) {
-      throw new Error(data.message || 'Vidssave parse failed');
+    if (data.code !== 'success' || !data.data) {
+      throw new Error(data.message || 'Tool77 request failed');
     }
 
-    const video = data.data;
-    const resources = video.resources || [];
-    
-    const formats = resources.map(r => {
-      // For YouTube, sometimes it provides a direct download_url (e.g. googlevideo.com)
-      // or a resource_content token. We should prioritize the token for the redirect.
-      const requestToken = r.resource_content || r.download_url;
-      const redirectUrl = `${VIDSSAVE_REDIRECT_URL}?request=${encodeURIComponent(requestToken)}`;
-      
-      const vcodec = r.type === 'video' ? 'mp4' : (r.type === 'audio' ? 'none' : 'unknown');
-      const acodec = r.type === 'audio' ? 'mp3' : (r.type === 'video' ? 'aac' : 'unknown');
+    const videoData = data.data;
+    const formats = [];
 
-      return {
-        format_id: r.resource_id || Math.random().toString(36).substring(7),
-        ext: (r.format || 'mp4').toLowerCase(),
-        resolution: r.quality || 'unknown',
-        filesize: r.size || null,
-        download_url: redirectUrl,
-        vcodec: vcodec,
-        acodec: acodec,
-        note: r.quality
-      };
+    // 1. Process normals
+    const normals = videoData.normals || [];
+    normals.forEach((item, index) => {
+      const decryptedUrl = decryptTool77Url(item.url);
+      const formatId = `normal_${index}_${(item.name || 'quality').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      formats.push({
+        format_id: formatId,
+        ext: (item.extension || 'mp4').toLowerCase(),
+        resolution: item.name || 'unknown',
+        filesize: item.contentLength || null,
+        download_url: `/api/download?url=${encodeURIComponent(url)}&format_id=${encodeURIComponent(formatId)}`,
+        decrypted_url: decryptedUrl,
+        vcodec: 'mp4',
+        acodec: 'aac',
+        note: item.name || 'Normal Quality'
+      });
+    });
+
+    // 2. Process videos
+    const videos = videoData.videos || [];
+    videos.forEach((item, index) => {
+      const decryptedUrl = decryptTool77Url(item.url);
+      const formatId = `video_${index}_${(item.name || 'quality').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      formats.push({
+        format_id: formatId,
+        ext: (item.extension || 'mp4').toLowerCase(),
+        resolution: item.name || 'unknown',
+        filesize: item.contentLength || null,
+        download_url: `/api/download?url=${encodeURIComponent(url)}&format_id=${encodeURIComponent(formatId)}`,
+        decrypted_url: decryptedUrl,
+        vcodec: 'mp4',
+        acodec: 'aac',
+        note: item.name || 'Video Quality'
+      });
+    });
+
+    // 3. Process audios
+    const audios = videoData.audios || [];
+    audios.forEach((item, index) => {
+      const decryptedUrl = decryptTool77Url(item.url);
+      const formatId = `audio_${index}_${(item.name || 'quality').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      formats.push({
+        format_id: formatId,
+        ext: (item.extension || 'mp3').toLowerCase(),
+        resolution: 'audio',
+        filesize: item.contentLength || null,
+        download_url: `/api/download?url=${encodeURIComponent(url)}&format_id=${encodeURIComponent(formatId)}`,
+        decrypted_url: decryptedUrl,
+        vcodec: 'none',
+        acodec: item.extension || 'mp3',
+        note: item.name || 'Audio Quality'
+      });
     });
 
     let platform = 'Social Media';
@@ -105,33 +124,29 @@ async function fetchVidssaveInfo(url, clientIp) {
     } catch { }
 
     return {
-      title: video.title || 'Untitled',
-      thumbnail: video.thumbnail || '',
-      duration: parseInt(video.duration) || 0,
-      uploader: video.source || platform,
+      title: videoData.title || 'Untitled',
+      thumbnail: videoData.thumbnail || '',
+      duration: 0,
+      uploader: platform,
       platform: platform,
       webpage_url: url,
       formats: formats,
       best_format: formats.length > 0 ? formats[0].format_id : null
     };
   } catch (err) {
-    console.error('[ERROR] Vidssave fetch failed:', err.message);
+    console.error('[ERROR] Tool77 fetch failed:', err.message);
     throw err;
   }
 }
-
 
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
   let { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
-  // Get client IP for Vidssave (essential for valid redirect tokens)
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
-
   try {
-    console.log(`[INFO] Fetching via VidsSave: ${url} (Client IP: ${clientIp})`);
-    const info = await fetchVidssaveInfo(url, clientIp);
+    console.log(`[INFO] Fetching via Tool77: ${url}`);
+    const info = await fetchTool77Info(url);
     res.json(info);
   } catch (err) {
     console.error('[ERROR] Primary fetch failed:', err.message);
@@ -141,71 +156,52 @@ app.post('/api/info', async (req, res) => {
 
 async function streamDownload(res, req, url, format_id, title) {
   try {
-    // When proxying the full stream, we must use the server's own IP for the parse
-    // to ensure we can get the redirect correctly from where we are (the server).
     console.log(`[DOWNLOAD] Fetching info for proxying (IP: server)...`, url);
-    const vidInfo = await fetchVidssaveInfo(url, null);
+    const vidInfo = await fetchTool77Info(url);
 
     const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
     if (!targetFormat) throw new Error('Format not found');
 
-    const downloadUrl = targetFormat.download_url;
-    console.log(`[DOWNLOAD] Fetching redirect: ${downloadUrl}`);
+    const downloadUrl = targetFormat.decrypted_url;
+    console.log(`[DOWNLOAD] Fetching stream: ${downloadUrl}`);
     
-    // Get the final media location
-    const redirectResponse = await fetch(downloadUrl, {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    };
+
+    const mediaResponse = await fetch(downloadUrl, {
       method: 'GET',
-      headers: {
-        'Referer': 'https://vidssave.com/',
-        'Origin': 'https://vidssave.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-      },
-      redirect: 'follow' // We follow all redirects to get the actual media stream
+      headers: headers,
+      redirect: 'follow'
     });
 
-    if (!redirectResponse.ok) {
-       const bodyText = await redirectResponse.text();
-       console.log(`[DOWNLOAD] Final URL failed (${redirectResponse.status}):`, bodyText.substring(0, 200));
-       return res.status(redirectResponse.status).send('Media fetching failed: ' + bodyText);
+    if (!mediaResponse.ok) {
+       const bodyText = await mediaResponse.text();
+       console.log(`[DOWNLOAD] Media URL failed (${mediaResponse.status}):`, bodyText.substring(0, 200));
+       return res.status(mediaResponse.status).send('Media fetching failed: ' + bodyText);
     }
 
-    const finalUrl = redirectResponse.url;
-    console.log(`[DOWNLOAD] Final Media URL: ${finalUrl}`);
-
-    const contentType = redirectResponse.headers.get('content-type') || '';
-    if (contentType.includes('json') || contentType.includes('text/html')) {
-        // VidsSave often returns errors as JSON or small HTML parts even with 200 OK
-        const bodyText = await redirectResponse.text();
-        if (bodyText.includes('"status":0') || bodyText.includes('link is empty')) {
-            console.log(`[DOWNLOAD] VidsSave Error detected via Content-Type:`, bodyText);
-            return res.status(400).send('Download link expired or invalid for this region. Please try again.');
-        }
-    }
+    const contentType = mediaResponse.headers.get('content-type') || '';
 
     // Set headers for file download
     const filename = `${title || 'video'}.${targetFormat.ext || 'mp4'}`.replace(/[^a-zA-Z0-9.-]/g, '_');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', contentType || 'application/octet-stream');
     
-    const contentLength = redirectResponse.headers.get('content-length');
+    const contentLength = mediaResponse.headers.get('content-length');
     if (contentLength) res.setHeader('Content-Length', contentLength);
 
-    // Use Readable.fromWeb for the most efficient piping in Node.js 18+
-    if (redirectResponse.body) {
-      Readable.fromWeb(redirectResponse.body).pipe(res);
+    if (mediaResponse.body) {
+      Readable.fromWeb(mediaResponse.body).pipe(res);
     } else {
       res.end();
     }
-
-
 
   } catch (err) {
     console.error('[DOWNLOAD] error:', err.message);
     if (!res.headersSent) res.status(500).send('Download failed: ' + err.message);
   }
 }
-
-
 
 // GET /api/download
 app.get('/api/download', async (req, res) => {
@@ -234,7 +230,7 @@ module.exports = app;
 
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running solely on VidsSave API!`);
+    console.log(`Server is running solely on Tool77 API!`);
     console.log(`Local UI available at: http://localhost:${PORT}`);
     console.log(`API info endpoint available at: http://localhost:${PORT}/api/info`);
   }).on('error', (err) => {
