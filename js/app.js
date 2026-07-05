@@ -209,15 +209,14 @@ function triggerDownload(audioOnly) {
         return;
     }
 
-    // ON VERCEL: We MUST avoid proxying the media stream because of the 10s timeout.
-    // Instead, we use the VidsSave redirect link directly, which the server has 
-    // already bound to the Client's IP during the /api/info call.
-    // We use rel="noreferrer" to bypass potential Referer blocks from VidsSave.
-    
+    // To force file download instead of playing it in the browser,
+    // we route the request through our server's proxy /api/download endpoint
+    const proxyUrl = `${API_BASE}/api/download?url=${encodeURIComponent(url)}` +
+        `&format_id=${encodeURIComponent(targetFormat.format_id)}` +
+        `&title=${encodeURIComponent(currentInfo.title || 'video')}`;
+
     const link = document.createElement('a');
-    link.href = targetFormat.download_url;
-    link.target = '_blank';
-    link.rel = 'noreferrer'; // CRITICAL: Hides our domain from VidsSave/YouTube
+    link.href = proxyUrl;
     link.download = (currentInfo.title || 'video') + '.' + (targetFormat.ext || 'mp4');
     document.body.appendChild(link);
     link.click();
