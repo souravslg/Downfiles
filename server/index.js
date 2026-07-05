@@ -71,6 +71,123 @@ function expandYoutubeUrl(url) {
   return url;
 }
 
+// --- SnapSave decryption and fetching for Facebook ---
+const SNAPSAVE_DECRYPT_KEYS = ["","split","0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/","slice","indexOf","","",".","pow","reduce","reverse","0"];
+
+function snapsaveBaseDecode(d, e, f) {
+  var g = SNAPSAVE_DECRYPT_KEYS[2][SNAPSAVE_DECRYPT_KEYS[1]](SNAPSAVE_DECRYPT_KEYS[0]);
+  var h = g[SNAPSAVE_DECRYPT_KEYS[3]](0, e);
+  var i = g[SNAPSAVE_DECRYPT_KEYS[3]](0, f);
+  var j = d[SNAPSAVE_DECRYPT_KEYS[1]](SNAPSAVE_DECRYPT_KEYS[0])[SNAPSAVE_DECRYPT_KEYS[10]]()[SNAPSAVE_DECRYPT_KEYS[9]](function(a, b, c) {
+    if (h[SNAPSAVE_DECRYPT_KEYS[4]](b) !== -1)
+      return a += h[SNAPSAVE_DECRYPT_KEYS[4]](b) * (Math[SNAPSAVE_DECRYPT_KEYS[8]](e, c));
+  }, 0);
+  var k = SNAPSAVE_DECRYPT_KEYS[0];
+  while (j > 0) {
+    k = i[j % f] + k;
+    j = (j - (j % f)) / f;
+  }
+  return k || SNAPSAVE_DECRYPT_KEYS[11];
+}
+
+function decodeSnapSave(h, u, n, t, e, r) {
+  let result = "";
+  for (var i = 0, len = h.length; i < len; i++) {
+    var s = "";
+    while (h[i] !== n[e]) {
+      s += h[i];
+      i++;
+    }
+    for (var j = 0; j < n.length; j++) {
+      s = s.replace(new RegExp(n[j], "g"), j);
+    }
+    result += String.fromCharCode(snapsaveBaseDecode(s, e, 10) - t);
+  }
+  return decodeURIComponent(escape(result));
+}
+
+async function fetchFacebookInfo(url) {
+  try {
+    const res = await fetch('https://snapsave.app/action.php?lang=en', {
+      method: 'POST',
+      headers: {
+        'Accept': '*/*',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://snapsave.app',
+        'Referer': 'https://snapsave.app/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      },
+      body: new URLSearchParams({ url })
+    });
+    const text = await res.text();
+    
+    const match = text.match(/eval\(function\(h,u,n,t,e,r\)\{.*?\}\((.*?)\)\)/);
+    if (!match) {
+      throw new Error('Failed to find decryption scripts from Snapsave');
+    }
+
+    const rawArgs = match[1];
+    const args = new Function(`return [${rawArgs}]`)();
+    const unpacked = decodeSnapSave(...args);
+
+    if (unpacked.includes('Error:')) {
+      const errTextMatch = unpacked.match(/innerHTML\s*=\s*"([^"]+)"/) || unpacked.match(/Error:\s*([^"]+)/);
+      const errMsg = errTextMatch ? errTextMatch[1].replace(/<[^>]*>/g, '') : 'Video is private or restricted.';
+      throw new Error(errMsg);
+    }
+
+    const tbodyMatch = unpacked.match(/<tbody>([\s\S]*?)<\/tbody>/);
+    if (!tbodyMatch) {
+      throw new Error('No formats found in Snapsave response');
+    }
+
+    const tbodyHtml = tbodyMatch[1];
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let rowMatch;
+    const formats = [];
+
+    while ((rowMatch = rowRegex.exec(tbodyHtml)) !== null) {
+      const rowHtml = rowMatch[1];
+      const tds = rowHtml.match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+      if (tds.length >= 3) {
+        const quality = tds[0].replace(/<[^>]*>/g, '').trim();
+        const hrefMatch = tds[2].match(/href=\\"(.*?)\\"|href='(.*?)'|href="(.*?)"/i);
+        const downloadUrl = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]) : null;
+        if (downloadUrl) {
+          formats.push({
+            format_id: `fb_${quality.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+            ext: 'mp4',
+            resolution: quality,
+            download_url: downloadUrl.replace(/\\/g, ''),
+            decrypted_url: downloadUrl.replace(/\\/g, ''),
+            vcodec: 'mp4',
+            acodec: 'aac',
+            note: `${quality} Quality`
+          });
+        }
+      }
+    }
+
+    if (formats.length === 0) {
+      throw new Error('Failed to parse download formats');
+    }
+
+    return {
+      title: 'Facebook Video',
+      thumbnail: '',
+      duration: 0,
+      uploader: 'Facebook',
+      platform: 'Facebook',
+      webpage_url: url,
+      formats: formats,
+      best_format: formats[0].format_id
+    };
+  } catch (err) {
+    console.error('[ERROR] fetchFacebookInfo failed:', err.message);
+    throw err;
+  }
+}
+
 async function fetchTool77Info(url) {
   const targetUrl = expandYoutubeUrl(url);
   const headers = {
@@ -180,14 +297,22 @@ async function fetchTool77Info(url) {
   }
 }
 
+async function getVideoInfo(url) {
+  const isFb = url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com');
+  if (isFb) {
+    return await fetchFacebookInfo(url);
+  }
+  return await fetchTool77Info(url);
+}
+
 // POST /api/info - Get video info
 app.post('/api/info', async (req, res) => {
   let { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required' });
 
   try {
-    console.log(`[INFO] Fetching via Tool77: ${url}`);
-    const info = await fetchTool77Info(url);
+    console.log(`[INFO] Fetching info for: ${url}`);
+    const info = await getVideoInfo(url);
     res.json(info);
   } catch (err) {
     console.error('[ERROR] Primary fetch failed:', err.message);
@@ -198,7 +323,7 @@ app.post('/api/info', async (req, res) => {
 async function streamDownload(res, req, url, format_id, title) {
   try {
     console.log(`[DOWNLOAD] Fetching info for proxying (IP: server)...`, url);
-    const vidInfo = await fetchTool77Info(url);
+    const vidInfo = await getVideoInfo(url);
 
     const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
     if (!targetFormat) throw new Error('Format not found');
