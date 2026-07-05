@@ -182,23 +182,28 @@ button {
 
 .logo-text-wrap {
   display: flex;
-  flex-direction: column;
-  line-height: 1.1;
+  align-items: center;
+  line-height: 1;
 }
 
 .logo-name {
-  font-size: 0.85rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  letter-spacing: -0.01em;
-  color: #f0f0f0;
+  letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
+.logo-white {
+  color: #ffffff;
+}
+
+.logo-purple {
+  color: #8b5cf6;
+  margin-left: 0.15rem;
+}
+
 .logo-sub {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #a78bfa;
-  letter-spacing: 0.03em;
+  display: none !important;
 }
 
 .navbar-links {
