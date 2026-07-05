@@ -320,15 +320,20 @@ app.post('/api/info', async (req, res) => {
   }
 });
 
-async function streamDownload(res, req, url, format_id, title) {
+async function streamDownload(res, req, url, format_id, title, download_url, ext) {
   try {
-    console.log(`[DOWNLOAD] Fetching info for proxying (IP: server)...`, url);
-    const vidInfo = await getVideoInfo(url);
+    let downloadUrl = download_url;
+    let fileExt = ext || 'mp4';
 
-    const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
-    if (!targetFormat) throw new Error('Format not found');
+    if (!downloadUrl) {
+      console.log(`[DOWNLOAD] Fetching info for proxying (IP: server)...`, url);
+      const vidInfo = await getVideoInfo(url);
+      const targetFormat = (vidInfo.formats || []).find(f => f.format_id === format_id) || vidInfo.formats[0];
+      if (!targetFormat) throw new Error('Format not found');
+      downloadUrl = targetFormat.decrypted_url;
+      fileExt = targetFormat.ext || 'mp4';
+    }
 
-    const downloadUrl = targetFormat.decrypted_url;
     console.log(`[DOWNLOAD] Fetching stream: ${downloadUrl}`);
     
     const headers = {
@@ -350,7 +355,7 @@ async function streamDownload(res, req, url, format_id, title) {
     const contentType = mediaResponse.headers.get('content-type') || '';
 
     // Set headers for file download
-    const filename = `${title || 'video'}.${targetFormat.ext || 'mp4'}`.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filename = `${title || 'video'}.${fileExt}`.replace(/[^a-zA-Z0-9.-]/g, '_');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', contentType || 'application/octet-stream');
     
@@ -371,16 +376,16 @@ async function streamDownload(res, req, url, format_id, title) {
 
 // GET /api/download
 app.get('/api/download', async (req, res) => {
-  const { url, format_id, title } = req.query;
-  if (!url) return res.status(400).send('URL is required');
-  await streamDownload(res, req, url, format_id, title);
+  const { url, format_id, title, download_url, ext } = req.query;
+  if (!url && !download_url) return res.status(400).send('URL or download_url is required');
+  await streamDownload(res, req, url, format_id, title, download_url, ext);
 });
 
 // POST /api/download
 app.post('/api/download', async (req, res) => {
-  const { url, format_id, title } = req.body;
-  if (!url) return res.status(400).json({ error: 'URL is required' });
-  await streamDownload(res, req, url, format_id, title);
+  const { url, format_id, title, download_url, ext } = req.body;
+  if (!url && !download_url) return res.status(400).json({ error: 'URL or download_url is required' });
+  await streamDownload(res, req, url, format_id, title, download_url, ext);
 });
 
 // POST /api/download-link - Get download link

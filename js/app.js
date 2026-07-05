@@ -211,9 +211,9 @@ function triggerDownload(audioOnly) {
 
     // To force file download instead of playing it in the browser,
     // we route the request through our server's proxy /api/download endpoint
-    const proxyUrl = `${API_BASE}/api/download?url=${encodeURIComponent(url)}` +
-        `&format_id=${encodeURIComponent(targetFormat.format_id)}` +
-        `&title=${encodeURIComponent(currentInfo.title || 'video')}`;
+    const proxyUrl = `${API_BASE}/api/download?download_url=${encodeURIComponent(targetFormat.download_url)}` +
+        `&title=${encodeURIComponent(currentInfo.title || 'video')}` +
+        `&ext=${encodeURIComponent(targetFormat.ext || 'mp4')}`;
 
     const link = document.createElement('a');
     link.href = proxyUrl;
