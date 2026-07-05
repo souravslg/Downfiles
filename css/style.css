@@ -386,10 +386,14 @@ main {
 }
 
 .typing-cursor {
-  font-weight: 300;
+  font-weight: 100;
   color: var(--text-muted);
   animation: blink 1s step-end infinite;
   margin-left: 0.1rem;
+  font-size: 0.8em;
+  opacity: 0.6;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 @keyframes blink {
