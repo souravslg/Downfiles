@@ -209,14 +209,17 @@ function triggerDownload(audioOnly) {
         return;
     }
 
-    // To force file download instead of playing it in the browser,
-    // we route the request through our server's proxy /api/download endpoint
-    const proxyUrl = `${API_BASE}/api/download?download_url=${encodeURIComponent(targetFormat.download_url)}` +
-        `&title=${encodeURIComponent(currentInfo.title || 'video')}` +
-        `&ext=${encodeURIComponent(targetFormat.ext || 'mp4')}`;
-
+    // ON VERCEL: We MUST avoid proxying the media stream because of Vercel's 10s timeout
+    // and Google Video's IP blocks (403 Forbidden). Instead, we link directly.
     const link = document.createElement('a');
-    link.href = proxyUrl;
+    link.href = targetFormat.download_url;
+
+    // For YouTube/Instagram, open in a new tab so they can view/save the video if it plays
+    if (currentInfo.platform === 'YouTube' || currentInfo.platform === 'Instagram') {
+        link.target = '_blank';
+        link.rel = 'noreferrer'; // Hides our domain
+    }
+
     link.download = (currentInfo.title || 'video') + '.' + (targetFormat.ext || 'mp4');
     document.body.appendChild(link);
     link.click();
