@@ -173,12 +173,14 @@
                     <span class="dl-header-label">▶️ YouTube Downloader</span>
                 </div>
                 <div class="dl-body">
-                    <div class="dl-input-row">
-                        <input id="yt-url" class="dl-input" type="url" placeholder="Paste YouTube URL... e.g. https://youtube.com/watch?v=...">
-                    </div>
-                    <div class="dl-btn-row">
-                        <button class="dl-btn dl-btn-video" onclick="ytDownload('mp4')">⬇️ Download Video</button>
-                        <button class="dl-btn dl-btn-audio" onclick="ytDownload('mp3')">🎵 Audio (MP3)</button>
+                    <div id="yt-input-section">
+                        <div class="dl-input-row">
+                            <input id="yt-url" class="dl-input" type="url" placeholder="Paste YouTube URL... e.g. https://youtube.com/watch?v=...">
+                        </div>
+                        <div class="dl-btn-row">
+                            <button class="dl-btn dl-btn-video" onclick="ytDownload('mp4')">⬇️ Download Video</button>
+                            <button class="dl-btn dl-btn-audio" onclick="ytDownload('mp3')">🎵 Audio (MP3)</button>
+                        </div>
                     </div>
 
                     <div id="yt-status" class="dl-status"></div>
@@ -257,6 +259,7 @@
             const url = document.getElementById('yt-url').value.trim();
             if (!url) return alert('Please paste a YouTube URL first.');
             document.getElementById('yt-result').classList.remove('show');
+            document.getElementById('yt-input-section').style.display = 'none';
             setStatus('yt-status', 'Fetching download link...', 'loading');
             try {
                 const r = await fetch('/api/rumix/youtube?url=' + encodeURIComponent(url) + '&format=' + format);
@@ -266,9 +269,9 @@
                 document.getElementById('yt-title').textContent = d.title || 'YouTube Video';
                 document.getElementById('yt-result').classList.add('show');
                 setStatus('yt-status', '', '');
-                // Auto-trigger download
                 ytTrigger(format);
             } catch(e) {
+                document.getElementById('yt-input-section').style.display = 'block';
                 setStatus('yt-status', '⚠️ ' + (e.message || 'Could not fetch download link. Try again.'), 'error');
             }
         }
@@ -290,6 +293,7 @@
             ytData = null;
             document.getElementById('yt-url').value = '';
             document.getElementById('yt-result').classList.remove('show');
+            document.getElementById('yt-input-section').style.display = 'block';
             setStatus('yt-status', '', '');
         }
     </script>

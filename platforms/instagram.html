@@ -152,10 +152,12 @@
                     <span class="dl-header-label">📸 Instagram Downloader</span>
                 </div>
                 <div class="dl-body">
-                    <div class="dl-input-row">
-                        <input id="insta-url" class="dl-input" type="url" placeholder="Paste Instagram Reel / Post URL...">
+                    <div id="insta-input-section">
+                        <div class="dl-input-row">
+                            <input id="insta-url" class="dl-input" type="url" placeholder="Paste Instagram Reel / Post URL...">
+                        </div>
+                        <button class="dl-btn" onclick="instaDownload()">⬇️ Download Video</button>
                     </div>
-                    <button class="dl-btn" onclick="instaDownload()">⬇️ Download Video</button>
 
                     <div id="insta-status" class="dl-status"></div>
 
@@ -226,6 +228,7 @@
             const url = document.getElementById('insta-url').value.trim();
             if (!url) return alert('Please paste an Instagram URL first.');
             document.getElementById('insta-result').classList.remove('show');
+            document.getElementById('insta-input-section').style.display = 'none';
             setStatus('insta-status', 'Fetching download link...', 'loading');
             try {
                 const r = await fetch('/api/rumix/instagram?url=' + encodeURIComponent(url) + '&format=mp4');
@@ -237,6 +240,7 @@
                 setStatus('insta-status', '', '');
                 instaTrigger();
             } catch(e) {
+                document.getElementById('insta-input-section').style.display = 'block';
                 setStatus('insta-status', '⚠️ ' + (e.message || 'Could not fetch. Try again.'), 'error');
             }
         }
@@ -258,6 +262,7 @@
             instaData = null;
             document.getElementById('insta-url').value = '';
             document.getElementById('insta-result').classList.remove('show');
+            document.getElementById('insta-input-section').style.display = 'block';
             setStatus('insta-status', '', '');
         }
     </script>

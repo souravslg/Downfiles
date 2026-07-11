@@ -152,10 +152,12 @@
                     <span class="dl-header-label">👤 Facebook Downloader</span>
                 </div>
                 <div class="dl-body">
-                    <div class="dl-input-row">
-                        <input id="fb-url" class="dl-input" type="url" placeholder="Paste Facebook Video / Reel URL...">
+                    <div id="fb-input-section">
+                        <div class="dl-input-row">
+                            <input id="fb-url" class="dl-input" type="url" placeholder="Paste Facebook Video / Reel URL...">
+                        </div>
+                        <button class="dl-btn" onclick="fbDownload()">⬇️ Download Video</button>
                     </div>
-                    <button class="dl-btn" onclick="fbDownload()">⬇️ Download Video</button>
 
                     <div id="fb-status" class="dl-status"></div>
 
@@ -218,6 +220,7 @@
             const url = document.getElementById('fb-url').value.trim();
             if (!url) return alert('Please paste a Facebook URL first.');
             document.getElementById('fb-result').classList.remove('show');
+            document.getElementById('fb-input-section').style.display = 'none';
             setStatus('fb-status', 'Fetching download link...', 'loading');
             try {
                 const r = await fetch('/api/rumix/facebook?url=' + encodeURIComponent(url) + '&format=mp4');
@@ -229,6 +232,7 @@
                 setStatus('fb-status', '', '');
                 fbTrigger();
             } catch(e) {
+                document.getElementById('fb-input-section').style.display = 'block';
                 setStatus('fb-status', '⚠️ ' + (e.message || 'Could not fetch. Try again.'), 'error');
             }
         }
@@ -250,6 +254,7 @@
             fbData = null;
             document.getElementById('fb-url').value = '';
             document.getElementById('fb-result').classList.remove('show');
+            document.getElementById('fb-input-section').style.display = 'block';
             setStatus('fb-status', '', '');
         }
     </script>
