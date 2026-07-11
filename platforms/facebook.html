@@ -195,6 +195,16 @@
     <script>
         let fbData = null;
 
+        // ── Auto-fill & auto-download if URL passed from homepage ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const preUrl = params.get('url');
+            if (preUrl) {
+                document.getElementById('fb-url').value = preUrl;
+                fbDownload();
+            }
+        });
+
         function setStatus(id, msg, type) {
             const el = document.getElementById(id);
             el.className = 'dl-status ' + (type || '');

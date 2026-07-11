@@ -234,6 +234,16 @@
     <script>
         let ytData = null;
 
+        // ── Auto-fill & auto-download if URL passed from homepage ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const preUrl = params.get('url');
+            if (preUrl) {
+                document.getElementById('yt-url').value = preUrl;
+                ytDownload('mp4');
+            }
+        });
+
         function setStatus(id, msg, type) {
             const el = document.getElementById(id);
             el.className = 'dl-status ' + (type || '');

@@ -96,7 +96,7 @@ async function handleSubmit() {
     // ── Route YouTube / Facebook / Instagram to embedded Rumix-AI pages ──
     const redirect = getRumixRedirect(url);
     if (redirect) {
-        window.location.href = redirect.page + redirect.anchor;
+        window.location.href = redirect.page + '?url=' + encodeURIComponent(url) + redirect.anchor;
         return;
     }
 

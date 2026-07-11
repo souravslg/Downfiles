@@ -203,6 +203,16 @@
     <script>
         let instaData = null;
 
+        // ── Auto-fill & auto-download if URL passed from homepage ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const preUrl = params.get('url');
+            if (preUrl) {
+                document.getElementById('insta-url').value = preUrl;
+                instaDownload();
+            }
+        });
+
         function setStatus(id, msg, type) {
             const el = document.getElementById(id);
             el.className = 'dl-status ' + (type || '');
