@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -12,40 +12,141 @@
     <link rel="stylesheet" href="../css/animations.css">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
+    <style>
+        /* ===== Embedded Downloader ===== */
+        .downloader-embed-section {
+            max-width: 960px;
+            margin: 0 auto 3rem;
+            padding: 0 1.5rem;
+        }
+
+        .embed-card {
+            background: linear-gradient(135deg, rgba(24,119,242,0.07), rgba(79,70,229,0.07));
+            border: 1px solid rgba(24,119,242,0.25);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+        }
+
+        .embed-header {
+            background: linear-gradient(90deg, #1877f2, #0a5dc2);
+            padding: 13px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .embed-dot { width: 11px; height: 11px; border-radius: 50%; }
+        .embed-dot.r { background: #ff5f56; }
+        .embed-dot.y { background: #ffbd2e; }
+        .embed-dot.g { background: #27c93f; }
+
+        .embed-header-label {
+            margin-left: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            letter-spacing: 0.04em;
+        }
+
+        .embed-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 52px 20px;
+            color: #888;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .embed-spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid rgba(24,119,242,0.2);
+            border-top-color: #1877f2;
+            border-radius: 50%;
+            animation: embedSpin 0.75s linear infinite;
+        }
+
+        @keyframes embedSpin { to { transform: rotate(360deg); } }
+
+        .embed-iframe {
+            width: 100%;
+            min-height: 650px;
+            border: none;
+            display: none;
+            background: #fff;
+        }
+    </style>
 </head>
 
 <body>
     <div class="grid-bg"></div>
     <nav class="navbar">
         <a href="../index.html" class="navbar-logo">
-      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="40" height="40" rx="10" fill="url(#logoGrad)" />
-        <path d="M30 22v4a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M20 8v12M14 14l6 6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-        <defs>
-          <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
-            <stop offset="0%" stop-color="#4f46e5" />
-            <stop offset="100%" stop-color="#7c3aed" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <span class="logo-text-wrap">
-        <span class="logo-name"><span class="logo-white">AllInOne</span><span class="logo-purple">Downloader</span></span>
-      </span>
-    </a>
-        <div class="navbar-links"><a href="../platforms.html"
-                class="nav-link">Platforms</a></div>
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="url(#logoGrad)" />
+            <path d="M30 22v4a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M20 8v12M14 14l6 6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#4f46e5" />
+                <stop offset="100%" stop-color="#7c3aed" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="logo-text-wrap">
+            <span class="logo-name"><span class="logo-white">AllInOne</span><span class="logo-purple">Downloader</span></span>
+          </span>
+        </a>
+        <div class="navbar-links">
+            <a href="../platforms.html" class="nav-link">Platforms</a>
+        </div>
+        <div class="navbar-actions">
+            <a href="../index.html" class="btn-support">🏠 Home</a>
+        </div>
     </nav>
+
     <main>
         <div class="page-hero">
             <div style="font-size:4rem;text-align:center;margin-bottom:1rem">👤</div>
             <div class="hero-badge animate-fade-down">Facebook Downloader</div>
             <h1 class="hero-title">Download Facebook Videos</h1>
             <p style="color:var(--text-muted);margin-top:0.75rem">Videos, Reels, Live streams — HD quality, free.</p>
-            <div style="margin-top:1.5rem"><a href="../index.html"
-                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 2.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700">⬇️
-                    Download Now</a></div>
+            <div style="margin-top:1.5rem">
+                <a href="#fb-downloader"
+                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 2.5rem;border-radius:9999px;background:linear-gradient(135deg,#1877f2,#0a5dc2);color:#fff;font-weight:700">⬇️
+                    Download Now</a>
+            </div>
         </div>
+
+        <!-- ===== Embedded Facebook Downloader ===== -->
+        <div class="downloader-embed-section" id="fb-downloader">
+            <div class="embed-card">
+                <div class="embed-header">
+                    <span class="embed-dot r"></span>
+                    <span class="embed-dot y"></span>
+                    <span class="embed-dot g"></span>
+                    <span class="embed-header-label">👤 Facebook Downloader — Powered by Rumix AI</span>
+                </div>
+                <div class="embed-loading" id="fb-loading">
+                    <div class="embed-spinner"></div>
+                    <span>Loading Facebook Downloader...</span>
+                </div>
+                <iframe
+                    id="fb-iframe"
+                    class="embed-iframe"
+                    src="https://rumix-ai.vercel.app/facebook-downloader"
+                    title="Facebook Downloader"
+                    allow="clipboard-read; clipboard-write"
+                    loading="lazy"
+                    onload="document.getElementById('fb-loading').style.display='none'; this.style.display='block';"
+                ></iframe>
+            </div>
+        </div>
+
         <div style="max-width:800px;margin:0 auto;padding:0 1.5rem 5rem">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
                 <div class="feature-card hover-lift"><span class="feature-icon">📹</span>
@@ -57,14 +158,12 @@
                     <div class="feature-desc">Save Facebook Reels without watermark.</div>
                 </div>
             </div>
-            <div style="text-align:center;margin-top:2.5rem"><a href="../index.html"
-                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 2rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700">⬇️
-                    Download Facebook Videos</a></div>
         </div>
     </main>
+
     <footer>
-        <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0"><span>© 2026
-                All In One Downloader.</span>
+        <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0">
+            <span>© 2026 All In One Downloader.</span>
             <div class="footer-bottom-links"><a href="../legal/terms.html">Terms</a><a
                     href="../legal/privacy.html">Privacy</a></div>
         </div>

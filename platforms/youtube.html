@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -14,33 +14,79 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
     <style>
+        /* ===== Embedded Downloader ===== */
+        .downloader-embed-section {
+            max-width: 960px;
+            margin: 0 auto 3rem;
+            padding: 0 1.5rem;
+        }
+
+        .embed-card {
+            background: linear-gradient(135deg, rgba(124,58,237,0.07), rgba(79,70,229,0.07));
+            border: 1px solid rgba(124,58,237,0.3);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+        }
+
+        .embed-header {
+            background: linear-gradient(90deg, #7c3aed, #4f46e5);
+            padding: 13px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .embed-dot { width: 11px; height: 11px; border-radius: 50%; }
+        .embed-dot.r { background: #ff5f56; }
+        .embed-dot.y { background: #ffbd2e; }
+        .embed-dot.g { background: #27c93f; }
+
+        .embed-header-label {
+            margin-left: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.88);
+            letter-spacing: 0.04em;
+        }
+
+        .embed-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 52px 20px;
+            color: #888;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .embed-spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid rgba(124,58,237,0.2);
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: embedSpin 0.75s linear infinite;
+        }
+
+        @keyframes embedSpin { to { transform: rotate(360deg); } }
+
+        .embed-iframe {
+            width: 100%;
+            min-height: 650px;
+            border: none;
+            display: none;
+            background: #fff;
+        }
+
         .platform-hero-icon {
             font-size: 4rem;
             display: block;
             text-align: center;
             margin-bottom: 1rem;
             animation: float 3s ease infinite;
-        }
-
-        .features-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-            margin: 1.5rem 0;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.9rem;
-            color: var(--text-dim);
-        }
-
-        .feature-item .check {
-            color: var(--green);
-            font-size: 1rem;
-            flex-shrink: 0;
         }
     </style>
 </head>
@@ -49,28 +95,28 @@
     <div class="grid-bg"></div>
     <nav class="navbar">
         <a href="../index.html" class="navbar-logo">
-      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="40" height="40" rx="10" fill="url(#logoGrad)" />
-        <path d="M30 22v4a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M20 8v12M14 14l6 6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-        <defs>
-          <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
-            <stop offset="0%" stop-color="#4f46e5" />
-            <stop offset="100%" stop-color="#7c3aed" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <span class="logo-text-wrap">
-        <span class="logo-name"><span class="logo-white">AllInOne</span><span class="logo-purple">Downloader</span></span>
-      </span>
-    </a>
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="10" fill="url(#logoGrad)" />
+            <path d="M30 22v4a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M20 8v12M14 14l6 6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#4f46e5" />
+                <stop offset="100%" stop-color="#7c3aed" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="logo-text-wrap">
+            <span class="logo-name"><span class="logo-white">AllInOne</span><span class="logo-purple">Downloader</span></span>
+          </span>
+        </a>
         <div class="navbar-links">
             <a href="../platforms.html" class="nav-link">Platforms</a>
             <a href="../guide.html" class="nav-link">Guide</a>
             <a href="../faq.html" class="nav-link">FAQ</a>
         </div>
         <div class="navbar-actions">
-            <a href="https://www.buymeacoffee.com" target="_blank" class="btn-support">☕ Support</a>
+            <a href="../index.html" class="btn-support">🏠 Home</a>
         </div>
     </nav>
 
@@ -79,12 +125,36 @@
             <span class="platform-hero-icon">▶️</span>
             <div class="hero-badge animate-fade-down">YouTube Downloader</div>
             <h1 class="hero-title">Download YouTube Videos</h1>
-            <p style="color:var(--text-muted);margin-top:0.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K
-                quality. Free, fast, no watermark.</p>
+            <p style="color:var(--text-muted);margin-top:0.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K quality. Free, fast, no watermark.</p>
             <div style="margin-top:1.5rem">
-                <a href="../index.html"
+                <a href="#yt-downloader"
                     style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 2.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700;font-size:1rem">⬇️
                     Download Now</a>
+            </div>
+        </div>
+
+        <!-- ===== Embedded YouTube Downloader ===== -->
+        <div class="downloader-embed-section" id="yt-downloader">
+            <div class="embed-card">
+                <div class="embed-header">
+                    <span class="embed-dot r"></span>
+                    <span class="embed-dot y"></span>
+                    <span class="embed-dot g"></span>
+                    <span class="embed-header-label">▶️ YouTube Downloader — Powered by Rumix AI</span>
+                </div>
+                <div class="embed-loading" id="yt-loading">
+                    <div class="embed-spinner"></div>
+                    <span>Loading YouTube Downloader...</span>
+                </div>
+                <iframe
+                    id="yt-iframe"
+                    class="embed-iframe"
+                    src="https://rumix-ai.vercel.app/youtube-downloader"
+                    title="YouTube Downloader"
+                    allow="clipboard-read; clipboard-write"
+                    loading="lazy"
+                    onload="document.getElementById('yt-loading').style.display='none'; this.style.display='block';"
+                ></iframe>
             </div>
         </div>
 
@@ -110,36 +180,6 @@
                     <div class="feature-title">YouTube Shorts</div>
                     <div class="feature-desc">Download Shorts just like regular videos — same URL, same process.</div>
                 </div>
-            </div>
-
-            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem">How to Download YouTube Videos</h2>
-            <div class="guide-step">
-                <div class="guide-step-num">1</div>
-                <div class="guide-step-content">
-                    <h3>Copy the YouTube URL</h3>
-                    <p>Go to the video on YouTube and copy the URL from the address bar.</p>
-                </div>
-            </div>
-            <div class="guide-step">
-                <div class="guide-step-num">2</div>
-                <div class="guide-step-content">
-                    <h3>Paste into All In One Downloader</h3>
-                    <p>Paste the URL into the input box on the <a href="../index.html" style="color:#a78bfa">All In One Downloader
-                            homepage</a>.</p>
-                </div>
-            </div>
-            <div class="guide-step">
-                <div class="guide-step-num">3</div>
-                <div class="guide-step-content">
-                    <h3>Choose Quality & Download</h3>
-                    <p>Select your preferred resolution or audio format, then click Download.</p>
-                </div>
-            </div>
-
-            <div style="text-align:center;margin-top:2rem">
-                <a href="../index.html"
-                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 2rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700">⬇️
-                    Start Downloading YouTube Videos</a>
             </div>
         </div>
     </main>

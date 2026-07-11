@@ -70,11 +70,35 @@ urlInput?.addEventListener('input', () => {
 submitBtn?.addEventListener('click', handleSubmit);
 urlInput?.addEventListener('keydown', e => { if (e.key === 'Enter') handleSubmit(); });
 
+// ===== Platform → Rumix-AI page routing =====
+const RUMIX_PLATFORMS = [
+    { patterns: ['youtube.com', 'youtu.be'],   page: 'platforms/youtube.html',   anchor: '#yt-downloader' },
+    { patterns: ['instagram.com'],              page: 'platforms/instagram.html', anchor: '#insta-downloader' },
+    { patterns: ['facebook.com', 'fb.watch', 'fb.com'], page: 'platforms/facebook.html', anchor: '#fb-downloader' },
+];
+
+function getRumixRedirect(url) {
+    try {
+        const { hostname } = new URL(url);
+        for (const p of RUMIX_PLATFORMS) {
+            if (p.patterns.some(h => hostname.includes(h))) return p;
+        }
+    } catch { }
+    return null;
+}
+
 async function handleSubmit() {
     const url = urlInput?.value.trim();
     if (!url) { showError('Please enter a URL.'); return; }
 
     if (!isValidUrl(url)) { showError('That doesn\'t look like a valid URL. Please paste a link from YouTube, TikTok, Instagram, etc.'); return; }
+
+    // ── Route YouTube / Facebook / Instagram to embedded Rumix-AI pages ──
+    const redirect = getRumixRedirect(url);
+    if (redirect) {
+        window.location.href = redirect.page + redirect.anchor;
+        return;
+    }
 
     setLoading(true);
     hideResult();
