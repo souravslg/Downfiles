@@ -81,6 +81,64 @@
             background: #fff;
         }
 
+        /* ===== Launch Card ===== */
+        .launch-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 52px 24px 44px;
+            text-align: center;
+        }
+
+        .launch-icon { font-size: 3.5rem; line-height: 1; }
+
+        .launch-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 0;
+        }
+
+        .launch-desc {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            max-width: 480px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .launch-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 1rem 2.4rem;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+            margin-top: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 20px rgba(124,58,237,0.4);
+        }
+
+        .launch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(124,58,237,0.55);
+        }
+
+        .launch-btn-icon { font-size: 1.2rem; }
+
+        .launch-hint {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin: 0;
+            letter-spacing: 0.02em;
+        }
+
         .platform-hero-icon {
             font-size: 4rem;
             display: block;
@@ -133,7 +191,7 @@
             </div>
         </div>
 
-        <!-- ===== Embedded YouTube Downloader ===== -->
+        <!-- ===== YouTube Downloader Launch Card ===== -->
         <div class="downloader-embed-section" id="yt-downloader">
             <div class="embed-card">
                 <div class="embed-header">
@@ -142,19 +200,17 @@
                     <span class="embed-dot g"></span>
                     <span class="embed-header-label">▶️ YouTube Downloader — Powered by Rumix AI</span>
                 </div>
-                <div class="embed-loading" id="yt-loading">
-                    <div class="embed-spinner"></div>
-                    <span>Loading YouTube Downloader...</span>
+                <div class="launch-body">
+                    <div class="launch-icon">▶️</div>
+                    <h2 class="launch-title">YouTube Video Downloader</h2>
+                    <p class="launch-desc">Download YouTube videos, Shorts & Playlists in up to 8K quality — free, fast, no watermark.</p>
+                    <a href="https://rumix-ai.vercel.app/youtube-downloader" target="_blank" rel="noopener noreferrer" class="launch-btn" id="yt-launch-btn">
+                        <span class="launch-btn-icon">⬇️</span>
+                        <span>Open YouTube Downloader</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+                    </a>
+                    <p class="launch-hint">Opens in a new tab · No sign-up needed · 100% Free</p>
                 </div>
-                <iframe
-                    id="yt-iframe"
-                    class="embed-iframe"
-                    src="https://rumix-ai.vercel.app/youtube-downloader"
-                    title="YouTube Downloader"
-                    allow="clipboard-read; clipboard-write"
-                    loading="lazy"
-                    onload="document.getElementById('yt-loading').style.display='none'; this.style.display='block';"
-                ></iframe>
             </div>
         </div>
 

@@ -13,7 +13,7 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
     <style>
-        /* ===== Embedded Downloader ===== */
+        /* ===== Embed Card Container ===== */
         .downloader-embed-section {
             max-width: 960px;
             margin: 0 auto 3rem;
@@ -49,35 +49,62 @@
             letter-spacing: 0.04em;
         }
 
-        .embed-loading {
+        /* ===== Launch Card ===== */
+        .launch-body {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 14px;
-            padding: 52px 20px;
-            color: #888;
-            font-size: 0.9rem;
-            font-family: 'Inter', sans-serif;
+            gap: 16px;
+            padding: 52px 24px 44px;
+            text-align: center;
         }
 
-        .embed-spinner {
-            width: 38px;
-            height: 38px;
-            border: 3px solid rgba(24,119,242,0.2);
-            border-top-color: #1877f2;
-            border-radius: 50%;
-            animation: embedSpin 0.75s linear infinite;
+        .launch-icon { font-size: 3.5rem; line-height: 1; }
+
+        .launch-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 0;
         }
 
-        @keyframes embedSpin { to { transform: rotate(360deg); } }
+        .launch-desc {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            max-width: 480px;
+            line-height: 1.6;
+            margin: 0;
+        }
 
-        .embed-iframe {
-            width: 100%;
-            min-height: 650px;
-            border: none;
-            display: none;
-            background: #fff;
+        .launch-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 1rem 2.4rem;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #1877f2, #0a5dc2);
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+            margin-top: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 20px rgba(24,119,242,0.4);
+        }
+
+        .launch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(24,119,242,0.55);
+        }
+
+        .launch-btn-icon { font-size: 1.2rem; }
+
+        .launch-hint {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin: 0;
+            letter-spacing: 0.02em;
         }
     </style>
 </head>
@@ -122,7 +149,7 @@
             </div>
         </div>
 
-        <!-- ===== Embedded Facebook Downloader ===== -->
+        <!-- ===== Facebook Downloader Launch Card ===== -->
         <div class="downloader-embed-section" id="fb-downloader">
             <div class="embed-card">
                 <div class="embed-header">
@@ -131,19 +158,17 @@
                     <span class="embed-dot g"></span>
                     <span class="embed-header-label">👤 Facebook Downloader — Powered by Rumix AI</span>
                 </div>
-                <div class="embed-loading" id="fb-loading">
-                    <div class="embed-spinner"></div>
-                    <span>Loading Facebook Downloader...</span>
+                <div class="launch-body">
+                    <div class="launch-icon">👤</div>
+                    <h2 class="launch-title">Facebook Video Downloader</h2>
+                    <p class="launch-desc">Download Facebook Videos, Reels & Live streams in HD — free, fast, no watermark, no login needed.</p>
+                    <a href="https://rumix-ai.vercel.app/facebook-downloader" target="_blank" rel="noopener noreferrer" class="launch-btn">
+                        <span class="launch-btn-icon">⬇️</span>
+                        <span>Open Facebook Downloader</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+                    </a>
+                    <p class="launch-hint">Opens in a new tab · No sign-up needed · 100% Free</p>
                 </div>
-                <iframe
-                    id="fb-iframe"
-                    class="embed-iframe"
-                    src="https://rumix-ai.vercel.app/facebook-downloader"
-                    title="Facebook Downloader"
-                    allow="clipboard-read; clipboard-write"
-                    loading="lazy"
-                    onload="document.getElementById('fb-loading').style.display='none'; this.style.display='block';"
-                ></iframe>
             </div>
         </div>
 
