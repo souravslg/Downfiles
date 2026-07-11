@@ -20,6 +20,45 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, '..')));
 
+// =====================================================================
+// RUMIX-AI PROXY ROUTES
+// Proxies requests to https://rumix-ai.vercel.app/api/social/*
+// so the client never needs to leave your domain.
+// =====================================================================
+const RUMIX_BASE = 'https://rumix-ai.vercel.app/api/social';
+
+async function rumixProxy(platform, req, res) {
+  const { url, format = 'mp4' } = req.query;
+  if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
+
+  try {
+    console.log(`[RUMIX] ${platform} → ${url}`);
+    const apiRes = await fetch(
+      `${RUMIX_BASE}/${platform}?url=${encodeURIComponent(url)}&format=${format}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Referer': `https://rumix-ai.vercel.app/${platform}-downloader`,
+          'Origin': 'https://rumix-ai.vercel.app'
+        }
+      }
+    );
+    const data = await apiRes.json();
+    res.json(data);
+  } catch (err) {
+    console.error(`[RUMIX] ${platform} error:`, err.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch from Rumix API' });
+  }
+}
+
+// YouTube: returns { success, title, video_url, audio_url }
+app.get('/api/rumix/youtube',   (req, res) => rumixProxy('youtube',   req, res));
+// Instagram: returns { success, title, url }
+app.get('/api/rumix/instagram', (req, res) => rumixProxy('instagram', req, res));
+// Facebook: returns { success, title, video }
+app.get('/api/rumix/facebook',  (req, res) => rumixProxy('facebook',  req, res));
+
+
 // --- Tool77 configuration ---
 const TOOL77_REQUEST_URL = 'https://www.tool77.com/en/v/download/all/request';
 

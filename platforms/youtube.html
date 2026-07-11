@@ -5,234 +5,217 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader – All In One Downloader</title>
-    <meta name="description"
-        content="Download YouTube videos, Shorts, and playlists in up to 8K quality. No sign-up required. Free forever.">
+    <meta name="description" content="Download YouTube videos, Shorts, and playlists in up to 8K quality. No sign-up required. Free forever.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/animations.css">
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
     <style>
-        /* ===== Embedded Downloader ===== */
-        .downloader-embed-section {
-            max-width: 960px;
-            margin: 0 auto 3rem;
-            padding: 0 1.5rem;
-        }
+        /* ===== Downloader Card ===== */
+        .dl-section { max-width: 780px; margin: 0 auto 4rem; padding: 0 1.5rem; }
 
-        .embed-card {
-            background: linear-gradient(135deg, rgba(124,58,237,0.07), rgba(79,70,229,0.07));
-            border: 1px solid rgba(124,58,237,0.3);
-            border-radius: 18px;
+        .dl-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(124,58,237,0.28);
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
         }
 
-        .embed-header {
+        .dl-header {
             background: linear-gradient(90deg, #7c3aed, #4f46e5);
-            padding: 13px 20px;
+            padding: 15px 22px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
+        .dl-dot { width: 11px; height: 11px; border-radius: 50%; }
+        .dl-dot.r { background:#ff5f56; }
+        .dl-dot.y { background:#ffbd2e; }
+        .dl-dot.g { background:#27c93f; }
+        .dl-header-label { margin-left:10px; font-size:.82rem; font-weight:700; color:rgba(255,255,255,.9); letter-spacing:.04em; }
 
-        .embed-dot { width: 11px; height: 11px; border-radius: 50%; }
-        .embed-dot.r { background: #ff5f56; }
-        .embed-dot.y { background: #ffbd2e; }
-        .embed-dot.g { background: #27c93f; }
+        .dl-body { padding: 32px 28px 28px; }
 
-        .embed-header-label {
-            margin-left: 10px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.88);
-            letter-spacing: 0.04em;
-        }
-
-        .embed-loading {
+        .dl-input-row {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            padding: 52px 20px;
-            color: #888;
-            font-size: 0.9rem;
-            font-family: 'Inter', sans-serif;
+            gap: 10px;
+            margin-bottom: 14px;
         }
 
-        .embed-spinner {
-            width: 38px;
-            height: 38px;
-            border: 3px solid rgba(124,58,237,0.2);
-            border-top-color: #7c3aed;
-            border-radius: 50%;
-            animation: embedSpin 0.75s linear infinite;
-        }
-
-        @keyframes embedSpin { to { transform: rotate(360deg); } }
-
-        .embed-iframe {
-            width: 100%;
-            min-height: 650px;
-            border: none;
-            display: none;
-            background: #fff;
-        }
-
-        /* ===== Launch Card ===== */
-        .launch-body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            padding: 52px 24px 44px;
-            text-align: center;
-        }
-
-        .launch-icon { font-size: 3.5rem; line-height: 1; }
-
-        .launch-title {
-            font-size: 1.5rem;
-            font-weight: 800;
+        .dl-input {
+            flex: 1;
+            padding: 13px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1.5px solid rgba(124,58,237,0.35);
+            border-radius: 10px;
             color: #fff;
-            margin: 0;
+            font-size: .95rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color .2s;
         }
+        .dl-input::placeholder { color: #555; }
+        .dl-input:focus { border-color: #7c3aed; }
 
-        .launch-desc {
-            font-size: 0.95rem;
-            color: #94a3b8;
-            max-width: 480px;
-            line-height: 1.6;
-            margin: 0;
+        .dl-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .dl-btn {
+            flex: 1;
+            min-width: 130px;
+            padding: 13px 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: .9rem;
+            font-family: 'Inter', sans-serif;
+            transition: transform .15s, opacity .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
         }
+        .dl-btn:hover:not(:disabled) { transform: translateY(-1px); opacity: .92; }
+        .dl-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-        .launch-btn {
-            display: inline-flex;
+        .dl-btn-video { background: linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+        .dl-btn-audio { background: linear-gradient(135deg,#1db954,#17a348); color:#fff; }
+
+        .dl-status {
+            margin-top: 16px;
+            padding: 13px 16px;
+            border-radius: 10px;
+            font-size: .9rem;
+            font-weight: 600;
+            display: none;
             align-items: center;
             gap: 10px;
-            padding: 1rem 2.4rem;
-            border-radius: 9999px;
-            background: linear-gradient(135deg, #7c3aed, #4f46e5);
-            color: #fff;
-            font-weight: 700;
-            font-size: 1rem;
-            text-decoration: none;
-            margin-top: 6px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 20px rgba(124,58,237,0.4);
         }
+        .dl-status.loading { background:rgba(99,102,241,.12); color:#a5b4fc; display:flex; }
+        .dl-status.success { background:rgba(34,197,94,.12); color:#4ade80; display:flex; }
+        .dl-status.error   { background:rgba(239,68,68,.12);  color:#f87171; display:flex; }
 
-        .launch-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(124,58,237,0.55);
+        .dl-spinner {
+            width: 18px; height: 18px; flex-shrink:0;
+            border: 2.5px solid rgba(165,180,252,.3);
+            border-top-color: #a5b4fc;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .launch-btn-icon { font-size: 1.2rem; }
-
-        .launch-hint {
-            font-size: 0.78rem;
-            color: #64748b;
-            margin: 0;
-            letter-spacing: 0.02em;
+        .dl-result {
+            margin-top: 18px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
         }
+        .dl-result.show { display: flex; }
 
-        .platform-hero-icon {
-            font-size: 4rem;
-            display: block;
-            text-align: center;
-            margin-bottom: 1rem;
-            animation: float 3s ease infinite;
+        .dl-thumb-row { display:flex; gap:14px; align-items:center; }
+        .dl-thumb { width:100px; height:62px; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,.1); }
+        .dl-title { font-weight:700; font-size:.95rem; color:#fff; }
+        .dl-platform { font-size:.78rem; color:#6366f1; margin-top:3px; font-weight:600; }
+
+        .dl-download-btns { display:flex; gap:10px; flex-wrap:wrap; }
+        .dl-down-btn {
+            flex:1; min-width:120px;
+            padding:12px 16px;
+            border:none; border-radius:10px;
+            cursor:pointer; font-weight:700; font-size:.88rem;
+            font-family:'Inter',sans-serif;
+            transition: transform .15s;
+            display:flex; align-items:center; justify-content:center; gap:8px;
         }
+        .dl-down-btn:hover { transform:translateY(-1px); }
+        .dl-down-btn.video { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+        .dl-down-btn.audio { background:linear-gradient(135deg,#1db954,#17a348); color:#fff; }
+        .dl-reset { background:rgba(255,255,255,.07); color:#94a3b8; border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 18px; cursor:pointer; font-size:.85rem; font-family:'Inter',sans-serif; font-weight:600; transition:.15s; }
+        .dl-reset:hover { background:rgba(255,255,255,.12); }
     </style>
 </head>
-
 <body>
     <div class="grid-bg"></div>
     <nav class="navbar">
         <a href="../index.html" class="navbar-logo">
           <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="40" height="40" rx="10" fill="url(#logoGrad)" />
-            <path d="M30 22v4a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M20 8v12M14 14l6 6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-            <defs>
-              <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
-                <stop offset="0%" stop-color="#4f46e5" />
-                <stop offset="100%" stop-color="#7c3aed" />
-              </linearGradient>
-            </defs>
+            <rect width="40" height="40" rx="10" fill="url(#lg)" />
+            <path d="M30 22v4a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-4" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 8v12M14 14l6 6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs><linearGradient id="lg" x1="0" y1="0" x2="40" y2="40">
+              <stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient></defs>
           </svg>
-          <span class="logo-text-wrap">
-            <span class="logo-name"><span class="logo-white">AllInOne</span><span class="logo-purple">Downloader</span></span>
-          </span>
+          <span class="logo-text-wrap"><span class="logo-name"><span class="logo-white">AllInOne</span><span class="logo-purple">Downloader</span></span></span>
         </a>
         <div class="navbar-links">
             <a href="../platforms.html" class="nav-link">Platforms</a>
             <a href="../guide.html" class="nav-link">Guide</a>
             <a href="../faq.html" class="nav-link">FAQ</a>
         </div>
-        <div class="navbar-actions">
-            <a href="../index.html" class="btn-support">🏠 Home</a>
-        </div>
     </nav>
 
     <main>
         <div class="page-hero">
-            <span class="platform-hero-icon">▶️</span>
+            <span style="font-size:4rem;display:block;text-align:center;margin-bottom:1rem;animation:float 3s ease infinite">▶️</span>
             <div class="hero-badge animate-fade-down">YouTube Downloader</div>
             <h1 class="hero-title">Download YouTube Videos</h1>
-            <p style="color:var(--text-muted);margin-top:0.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K quality. Free, fast, no watermark.</p>
-            <div style="margin-top:1.5rem">
-                <a href="#yt-downloader"
-                    style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 2.5rem;border-radius:9999px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700;font-size:1rem">⬇️
-                    Download Now</a>
-            </div>
+            <p style="color:var(--text-muted);margin-top:.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K quality. Free, fast, no watermark.</p>
         </div>
 
-        <!-- ===== YouTube Downloader Launch Card ===== -->
-        <div class="downloader-embed-section" id="yt-downloader">
-            <div class="embed-card">
-                <div class="embed-header">
-                    <span class="embed-dot r"></span>
-                    <span class="embed-dot y"></span>
-                    <span class="embed-dot g"></span>
-                    <span class="embed-header-label">▶️ YouTube Downloader — Powered by Rumix AI</span>
+        <!-- ===== Native YouTube Downloader ===== -->
+        <div class="dl-section" id="yt-downloader">
+            <div class="dl-card">
+                <div class="dl-header">
+                    <span class="dl-dot r"></span><span class="dl-dot y"></span><span class="dl-dot g"></span>
+                    <span class="dl-header-label">▶️ YouTube Downloader</span>
                 </div>
-                <div class="launch-body">
-                    <div class="launch-icon">▶️</div>
-                    <h2 class="launch-title">YouTube Video Downloader</h2>
-                    <p class="launch-desc">Download YouTube videos, Shorts & Playlists in up to 8K quality — free, fast, no watermark.</p>
-                    <a href="https://rumix-ai.vercel.app/youtube-downloader" target="_blank" rel="noopener noreferrer" class="launch-btn" id="yt-launch-btn">
-                        <span class="launch-btn-icon">⬇️</span>
-                        <span>Open YouTube Downloader</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
-                    </a>
-                    <p class="launch-hint">Opens in a new tab · No sign-up needed · 100% Free</p>
+                <div class="dl-body">
+                    <div class="dl-input-row">
+                        <input id="yt-url" class="dl-input" type="url" placeholder="Paste YouTube URL... e.g. https://youtube.com/watch?v=...">
+                    </div>
+                    <div class="dl-btn-row">
+                        <button class="dl-btn dl-btn-video" onclick="ytDownload('mp4')">⬇️ Download Video</button>
+                        <button class="dl-btn dl-btn-audio" onclick="ytDownload('mp3')">🎵 Audio (MP3)</button>
+                    </div>
+
+                    <div id="yt-status" class="dl-status"></div>
+
+                    <div id="yt-result" class="dl-result">
+                        <div class="dl-thumb-row">
+                            <img id="yt-thumb" class="dl-thumb" src="" alt="Thumbnail" style="display:none">
+                            <div>
+                                <div id="yt-title" class="dl-title"></div>
+                                <div class="dl-platform">YouTube</div>
+                            </div>
+                        </div>
+                        <div class="dl-download-btns">
+                            <button id="yt-dl-video" class="dl-down-btn video" onclick="ytTrigger('mp4')">⬇️ Download MP4</button>
+                            <button id="yt-dl-audio" class="dl-down-btn audio" onclick="ytTrigger('mp3')">🎵 Download MP3</button>
+                        </div>
+                        <button class="dl-reset" onclick="ytReset()">↩ Download Another</button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div style="max-width:800px;margin:0 auto;padding:0 1.5rem 5rem">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2.5rem">
-                <div class="feature-card hover-lift">
-                    <span class="feature-icon">📹</span>
+                <div class="feature-card hover-lift"><span class="feature-icon">📹</span>
                     <div class="feature-title">Up to 8K Resolution</div>
                     <div class="feature-desc">Download at 4K, 8K, 1080p, 720p or any resolution YouTube offers.</div>
                 </div>
-                <div class="feature-card hover-lift">
-                    <span class="feature-icon">🎵</span>
+                <div class="feature-card hover-lift"><span class="feature-icon">🎵</span>
                     <div class="feature-title">Audio Only (MP3)</div>
                     <div class="feature-desc">Extract high-quality MP3 audio from any YouTube video.</div>
                 </div>
-                <div class="feature-card hover-lift">
-                    <span class="feature-icon">📋</span>
+                <div class="feature-card hover-lift"><span class="feature-icon">📋</span>
                     <div class="feature-title">Playlist Downloads</div>
                     <div class="feature-desc">Download entire YouTube playlists with a single URL.</div>
                 </div>
-                <div class="feature-card hover-lift">
-                    <span class="feature-icon">⚡</span>
+                <div class="feature-card hover-lift"><span class="feature-icon">⚡</span>
                     <div class="feature-title">YouTube Shorts</div>
                     <div class="feature-desc">Download Shorts just like regular videos — same URL, same process.</div>
                 </div>
@@ -243,11 +226,62 @@
     <footer>
         <div class="footer-bottom" style="max-width:1100px;margin:0 auto;border-top:none;padding-top:0">
             <span>© 2026 All In One Downloader. All rights reserved.</span>
-            <div class="footer-bottom-links"><a href="../legal/terms.html">Terms</a><a
-                    href="../legal/privacy.html">Privacy</a></div>
+            <div class="footer-bottom-links"><a href="../legal/terms.html">Terms</a><a href="../legal/privacy.html">Privacy</a></div>
             <span>Built with <span class="heart">♥</span> for the Social Community</span>
         </div>
     </footer>
-</body>
 
+    <script>
+        let ytData = null;
+
+        function setStatus(id, msg, type) {
+            const el = document.getElementById(id);
+            el.className = 'dl-status ' + (type || '');
+            if (!msg) { el.style.display = 'none'; return; }
+            el.innerHTML = type === 'loading'
+                ? `<div class="dl-spinner"></div><span>${msg}</span>`
+                : `<span>${msg}</span>`;
+        }
+
+        async function ytDownload(format) {
+            const url = document.getElementById('yt-url').value.trim();
+            if (!url) return alert('Please paste a YouTube URL first.');
+            document.getElementById('yt-result').classList.remove('show');
+            setStatus('yt-status', 'Fetching download link...', 'loading');
+            try {
+                const r = await fetch('/api/rumix/youtube?url=' + encodeURIComponent(url) + '&format=' + format);
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Failed');
+                ytData = d;
+                document.getElementById('yt-title').textContent = d.title || 'YouTube Video';
+                document.getElementById('yt-result').classList.add('show');
+                setStatus('yt-status', '', '');
+                // Auto-trigger download
+                ytTrigger(format);
+            } catch(e) {
+                setStatus('yt-status', '⚠️ ' + (e.message || 'Could not fetch download link. Try again.'), 'error');
+            }
+        }
+
+        function ytTrigger(format) {
+            if (!ytData) return;
+            const link = format === 'mp3' ? ytData.audio_url : ytData.video_url;
+            if (!link) { setStatus('yt-status', '⚠️ No ' + format + ' link available.', 'error'); return; }
+            const a = document.createElement('a');
+            a.href = link;
+            a.download = (ytData.title || 'video') + (format === 'mp3' ? '.mp3' : '.mp4');
+            a.target = '_blank'; a.rel = 'noreferrer';
+            document.body.appendChild(a); a.click();
+            setTimeout(() => document.body.removeChild(a), 100);
+            setStatus('yt-status', '✅ Download started!', 'success');
+        }
+
+        function ytReset() {
+            ytData = null;
+            document.getElementById('yt-url').value = '';
+            document.getElementById('yt-result').classList.remove('show');
+            setStatus('yt-status', '', '');
+        }
+    </script>
+</body>
 </html>
