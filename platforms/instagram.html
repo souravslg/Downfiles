@@ -166,7 +166,7 @@
                             <div id="insta-title" class="dl-title"></div>
                             <div class="dl-platform">Instagram</div>
                         </div>
-                        <button class="dl-down-btn" onclick="instaTrigger()">⬇️ Download Now</button>
+                        <div id="insta-formats" style="display:flex;flex-direction:column;gap:8px"></div>
                         <button class="dl-reset" onclick="instaReset()">↩ Download Another</button>
                     </div>
                 </div>
@@ -229,29 +229,47 @@
             if (!url) return alert('Please paste an Instagram URL first.');
             document.getElementById('insta-result').classList.remove('show');
             document.getElementById('insta-input-section').style.display = 'none';
-            setStatus('insta-status', 'Fetching download link...', 'loading');
+            setStatus('insta-status', 'Fetching download links...', 'loading');
             try {
-                const r = await fetch('/api/rumix/instagram?url=' + encodeURIComponent(url) + '&format=mp4');
+                const r = await fetch('/api/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
                 const d = await r.json();
-                if (!d.success) throw new Error(d.error || 'Failed');
+                if (d.error) throw new Error(d.error);
                 instaData = d;
                 document.getElementById('insta-title').textContent = d.title || 'Instagram Video';
+                // Build quality buttons
+                const fmtDiv = document.getElementById('insta-formats');
+                fmtDiv.innerHTML = '';
+                (d.formats || []).forEach(fmt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'dl-down-btn';
+                    const label = fmt.vcodec === 'none'
+                        ? `🎧 Download ${fmt.note || 'Audio'} (${fmt.ext.toUpperCase()})`
+                        : `⬇️ Download ${fmt.note || fmt.resolution} (${fmt.ext.toUpperCase()})`;
+                    btn.textContent = label;
+                    btn.onclick = () => instaTrigger(fmt.decrypted_url || fmt.download_url, d.title, fmt.ext);
+                    fmtDiv.appendChild(btn);
+                });
+                if (!d.formats || d.formats.length === 0) throw new Error('No download links found.');
                 document.getElementById('insta-result').classList.add('show');
                 setStatus('insta-status', '', '');
-                instaTrigger();
             } catch(e) {
                 document.getElementById('insta-input-section').style.display = 'block';
                 setStatus('insta-status', '⚠️ ' + (e.message || 'Could not fetch. Try again.'), 'error');
             }
         }
 
-        function instaTrigger() {
-            if (!instaData) return;
-            const link = instaData.url;
+        function instaTrigger(link, title, ext) {
             if (!link) { setStatus('insta-status', '⚠️ No download link available.', 'error'); return; }
+            const proxyUrl = '/api/download?download_url=' + encodeURIComponent(link)
+                + '&title=' + encodeURIComponent(title || 'instagram')
+                + '&ext=' + (ext || 'mp4');
             const a = document.createElement('a');
-            a.href = link;
-            a.download = (instaData.title || 'instagram') + '.mp4';
+            a.href = proxyUrl;
+            a.download = (title || 'instagram') + '.' + (ext || 'mp4');
             a.target = '_blank'; a.rel = 'noreferrer';
             document.body.appendChild(a); a.click();
             setTimeout(() => document.body.removeChild(a), 100);
@@ -263,6 +281,7 @@
             document.getElementById('insta-url').value = '';
             document.getElementById('insta-result').classList.remove('show');
             document.getElementById('insta-input-section').style.display = 'block';
+            document.getElementById('insta-formats').innerHTML = '';
             setStatus('insta-status', '', '');
         }
     </script>

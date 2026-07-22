@@ -166,7 +166,7 @@
                             <div id="fb-title" class="dl-title"></div>
                             <div class="dl-platform">Facebook</div>
                         </div>
-                        <button class="dl-down-btn" onclick="fbTrigger()">⬇️ Download Now</button>
+                        <div id="fb-formats" style="display:flex;flex-direction:column;gap:8px"></div>
                         <button class="dl-reset" onclick="fbReset()">↩ Download Another</button>
                     </div>
                 </div>
@@ -221,29 +221,45 @@
             if (!url) return alert('Please paste a Facebook URL first.');
             document.getElementById('fb-result').classList.remove('show');
             document.getElementById('fb-input-section').style.display = 'none';
-            setStatus('fb-status', 'Fetching download link...', 'loading');
+            setStatus('fb-status', 'Fetching download links...', 'loading');
             try {
-                const r = await fetch('/api/rumix/facebook?url=' + encodeURIComponent(url) + '&format=mp4');
+                const r = await fetch('/api/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
                 const d = await r.json();
-                if (!d.success) throw new Error(d.error || 'Failed');
+                if (d.error) throw new Error(d.error);
                 fbData = d;
                 document.getElementById('fb-title').textContent = d.title || 'Facebook Video';
+                // Build quality buttons
+                const fmtDiv = document.getElementById('fb-formats');
+                fmtDiv.innerHTML = '';
+                (d.formats || []).forEach(fmt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'dl-down-btn';
+                    btn.textContent = `⬇️ Download ${fmt.note || fmt.resolution} (${fmt.ext.toUpperCase()})`;
+                    btn.onclick = () => fbTrigger(fmt.decrypted_url || fmt.download_url, d.title, fmt.ext);
+                    fmtDiv.appendChild(btn);
+                });
+                if (!d.formats || d.formats.length === 0) throw new Error('No download links found.');
                 document.getElementById('fb-result').classList.add('show');
                 setStatus('fb-status', '', '');
-                fbTrigger();
             } catch(e) {
                 document.getElementById('fb-input-section').style.display = 'block';
                 setStatus('fb-status', '⚠️ ' + (e.message || 'Could not fetch. Try again.'), 'error');
             }
         }
 
-        function fbTrigger() {
-            if (!fbData) return;
-            const link = fbData.video;
+        function fbTrigger(link, title, ext) {
             if (!link) { setStatus('fb-status', '⚠️ No download link available.', 'error'); return; }
+            // Proxy through our server to avoid CORS/hotlink blocks
+            const proxyUrl = '/api/download?download_url=' + encodeURIComponent(link)
+                + '&title=' + encodeURIComponent(title || 'facebook')
+                + '&ext=' + (ext || 'mp4');
             const a = document.createElement('a');
-            a.href = link;
-            a.download = (fbData.title || 'facebook') + '.mp4';
+            a.href = proxyUrl;
+            a.download = (title || 'facebook') + '.' + (ext || 'mp4');
             a.target = '_blank'; a.rel = 'noreferrer';
             document.body.appendChild(a); a.click();
             setTimeout(() => document.body.removeChild(a), 100);
@@ -255,6 +271,7 @@
             document.getElementById('fb-url').value = '';
             document.getElementById('fb-result').classList.remove('show');
             document.getElementById('fb-input-section').style.display = 'block';
+            document.getElementById('fb-formats').innerHTML = '';
             setStatus('fb-status', '', '');
         }
     </script>

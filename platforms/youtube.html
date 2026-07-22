@@ -178,8 +178,7 @@
                             <input id="yt-url" class="dl-input" type="url" placeholder="Paste YouTube URL... e.g. https://youtube.com/watch?v=...">
                         </div>
                         <div class="dl-btn-row">
-                            <button class="dl-btn dl-btn-video" onclick="ytDownload('mp4')">⬇️ Download Video</button>
-                            <button class="dl-btn dl-btn-audio" onclick="ytDownload('mp3')">🎵 Audio (MP3)</button>
+                            <button class="dl-btn dl-btn-video" onclick="ytDownload()">⬇️ Get Download Links</button>
                         </div>
                     </div>
 
@@ -193,10 +192,7 @@
                                 <div class="dl-platform">YouTube</div>
                             </div>
                         </div>
-                        <div class="dl-download-btns">
-                            <button id="yt-dl-video" class="dl-down-btn video" onclick="ytTrigger('mp4')">⬇️ Download MP4</button>
-                            <button id="yt-dl-audio" class="dl-down-btn audio" onclick="ytTrigger('mp3')">🎵 Download MP3</button>
-                        </div>
+                        <div id="yt-formats" style="display:flex;flex-direction:column;gap:8px"></div>
                         <button class="dl-reset" onclick="ytReset()">↩ Download Another</button>
                     </div>
                 </div>
@@ -242,7 +238,7 @@
             const preUrl = params.get('url');
             if (preUrl) {
                 document.getElementById('yt-url').value = preUrl;
-                ytDownload('mp4');
+                ytDownload();
             }
         });
 
@@ -255,34 +251,63 @@
                 : `<span>${msg}</span>`;
         }
 
-        async function ytDownload(format) {
+        async function ytDownload() {
             const url = document.getElementById('yt-url').value.trim();
             if (!url) return alert('Please paste a YouTube URL first.');
             document.getElementById('yt-result').classList.remove('show');
             document.getElementById('yt-input-section').style.display = 'none';
-            setStatus('yt-status', 'Fetching download link...', 'loading');
+            setStatus('yt-status', 'Fetching download links...', 'loading');
             try {
-                const r = await fetch('/api/rumix/youtube?url=' + encodeURIComponent(url) + '&format=' + format);
+                const r = await fetch('/api/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
                 const d = await r.json();
-                if (!d.success) throw new Error(d.error || 'Failed');
+                if (d.error) throw new Error(d.error);
                 ytData = d;
                 document.getElementById('yt-title').textContent = d.title || 'YouTube Video';
+                if (d.thumbnail) {
+                    const thumb = document.getElementById('yt-thumb');
+                    thumb.src = d.thumbnail;
+                    thumb.style.display = 'block';
+                }
+                // Build format buttons
+                const fmtDiv = document.getElementById('yt-formats');
+                fmtDiv.innerHTML = '';
+                const videoFmts = (d.formats || []).filter(f => f.vcodec !== 'none');
+                const audioFmts = (d.formats || []).filter(f => f.vcodec === 'none');
+                videoFmts.forEach(fmt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'dl-down-btn video';
+                    btn.textContent = `⬇️ ${fmt.note || fmt.resolution} (${fmt.ext.toUpperCase()})`;
+                    btn.onclick = () => ytTrigger(fmt.decrypted_url || fmt.download_url, d.title, fmt.ext);
+                    fmtDiv.appendChild(btn);
+                });
+                audioFmts.forEach(fmt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'dl-down-btn audio';
+                    btn.textContent = `🎧 ${fmt.note || 'Audio'} (${fmt.ext.toUpperCase()})`;
+                    btn.onclick = () => ytTrigger(fmt.decrypted_url || fmt.download_url, d.title, fmt.ext);
+                    fmtDiv.appendChild(btn);
+                });
+                if (!d.formats || d.formats.length === 0) throw new Error('No download links found.');
                 document.getElementById('yt-result').classList.add('show');
                 setStatus('yt-status', '', '');
-                ytTrigger(format);
             } catch(e) {
                 document.getElementById('yt-input-section').style.display = 'block';
                 setStatus('yt-status', '⚠️ ' + (e.message || 'Could not fetch download link. Try again.'), 'error');
             }
         }
 
-        function ytTrigger(format) {
-            if (!ytData) return;
-            const link = format === 'mp3' ? ytData.audio_url : ytData.video_url;
-            if (!link) { setStatus('yt-status', '⚠️ No ' + format + ' link available.', 'error'); return; }
+        function ytTrigger(link, title, ext) {
+            if (!link) { setStatus('yt-status', '⚠️ No download link available.', 'error'); return; }
+            const proxyUrl = '/api/download?download_url=' + encodeURIComponent(link)
+                + '&title=' + encodeURIComponent(title || 'video')
+                + '&ext=' + (ext || 'mp4');
             const a = document.createElement('a');
-            a.href = link;
-            a.download = (ytData.title || 'video') + (format === 'mp3' ? '.mp3' : '.mp4');
+            a.href = proxyUrl;
+            a.download = (title || 'video') + '.' + (ext || 'mp4');
             a.target = '_blank'; a.rel = 'noreferrer';
             document.body.appendChild(a); a.click();
             setTimeout(() => document.body.removeChild(a), 100);
@@ -294,6 +319,9 @@
             document.getElementById('yt-url').value = '';
             document.getElementById('yt-result').classList.remove('show');
             document.getElementById('yt-input-section').style.display = 'block';
+            document.getElementById('yt-formats').innerHTML = '';
+            const thumb = document.getElementById('yt-thumb');
+            thumb.src = ''; thumb.style.display = 'none';
             setStatus('yt-status', '', '');
         }
     </script>
