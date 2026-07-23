@@ -13,7 +13,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
     <style>
         /* ===== Downloader Card ===== */
-        .dl-section { max-width: 780px; margin: 0 auto 4rem; padding: 0 1.5rem; }
+        .dl-section { max-width: 900px; margin: 0 auto 4rem; padding: 0 1.5rem; }
 
         .dl-card {
             background: rgba(255,255,255,0.03);
@@ -36,104 +36,28 @@
         .dl-dot.g { background:#27c93f; }
         .dl-header-label { margin-left:10px; font-size:.82rem; font-weight:700; color:rgba(255,255,255,.9); letter-spacing:.04em; }
 
-        .dl-body { padding: 32px 28px 28px; }
-
-        .dl-input-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 14px;
+        .dl-iframe-wrap {
+            width: 100%;
+            min-height: 560px;
+            background: #0d0d1a;
+            position: relative;
         }
 
-        .dl-input {
-            flex: 1;
-            padding: 13px 16px;
-            background: rgba(255,255,255,0.06);
-            border: 1.5px solid rgba(124,58,237,0.35);
-            border-radius: 10px;
-            color: #fff;
-            font-size: .95rem;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-            transition: border-color .2s;
-        }
-        .dl-input::placeholder { color: #555; }
-        .dl-input:focus { border-color: #7c3aed; }
-
-        .dl-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-
-        .dl-btn {
-            flex: 1;
-            min-width: 130px;
-            padding: 13px 18px;
+        .dl-iframe-wrap iframe {
+            width: 100%;
+            height: 560px;
             border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: .9rem;
-            font-family: 'Inter', sans-serif;
-            transition: transform .15s, opacity .15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
+            display: block;
         }
-        .dl-btn:hover:not(:disabled) { transform: translateY(-1px); opacity: .92; }
-        .dl-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-        .dl-btn-video { background: linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
-        .dl-btn-audio { background: linear-gradient(135deg,#1db954,#17a348); color:#fff; }
-
-        .dl-status {
-            margin-top: 16px;
-            padding: 13px 16px;
-            border-radius: 10px;
-            font-size: .9rem;
-            font-weight: 600;
-            display: none;
-            align-items: center;
-            gap: 10px;
+        .dl-iframe-note {
+            text-align: center;
+            font-size: .78rem;
+            color: #4a5568;
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid rgba(255,255,255,0.05);
         }
-        .dl-status.loading { background:rgba(99,102,241,.12); color:#a5b4fc; display:flex; }
-        .dl-status.success { background:rgba(34,197,94,.12); color:#4ade80; display:flex; }
-        .dl-status.error   { background:rgba(239,68,68,.12);  color:#f87171; display:flex; }
-
-        .dl-spinner {
-            width: 18px; height: 18px; flex-shrink:0;
-            border: 2.5px solid rgba(165,180,252,.3);
-            border-top-color: #a5b4fc;
-            border-radius: 50%;
-            animation: spin .7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .dl-result {
-            margin-top: 18px;
-            display: none;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .dl-result.show { display: flex; }
-
-        .dl-thumb-row { display:flex; gap:14px; align-items:center; }
-        .dl-thumb { width:100px; height:62px; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,.1); }
-        .dl-title { font-weight:700; font-size:.95rem; color:#fff; }
-        .dl-platform { font-size:.78rem; color:#6366f1; margin-top:3px; font-weight:600; }
-
-        .dl-download-btns { display:flex; gap:10px; flex-wrap:wrap; }
-        .dl-down-btn {
-            flex:1; min-width:120px;
-            padding:12px 16px;
-            border:none; border-radius:10px;
-            cursor:pointer; font-weight:700; font-size:.88rem;
-            font-family:'Inter',sans-serif;
-            transition: transform .15s;
-            display:flex; align-items:center; justify-content:center; gap:8px;
-        }
-        .dl-down-btn:hover { transform:translateY(-1px); }
-        .dl-down-btn.video { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
-        .dl-down-btn.audio { background:linear-gradient(135deg,#1db954,#17a348); color:#fff; }
-        .dl-reset { background:rgba(255,255,255,.07); color:#94a3b8; border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 18px; cursor:pointer; font-size:.85rem; font-family:'Inter',sans-serif; font-weight:600; transition:.15s; }
-        .dl-reset:hover { background:rgba(255,255,255,.12); }
     </style>
 </head>
 <body>
@@ -165,37 +89,24 @@
             <p style="color:var(--text-muted);margin-top:.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K quality. Free, fast, no watermark.</p>
         </div>
 
-        <!-- ===== Native YouTube Downloader ===== -->
+        <!-- ===== YouTube Downloader (Embedded) ===== -->
         <div class="dl-section" id="yt-downloader">
             <div class="dl-card">
                 <div class="dl-header">
                     <span class="dl-dot r"></span><span class="dl-dot y"></span><span class="dl-dot g"></span>
                     <span class="dl-header-label">▶️ YouTube Downloader</span>
                 </div>
-                <div class="dl-body">
-                    <div id="yt-input-section">
-                        <div class="dl-input-row">
-                            <input id="yt-url" class="dl-input" type="url" placeholder="Paste YouTube URL... e.g. https://youtube.com/watch?v=...">
-                        </div>
-                        <div class="dl-btn-row">
-                            <button class="dl-btn dl-btn-video" onclick="ytDownload()">⬇️ Get Download Links</button>
-                        </div>
-                    </div>
-
-                    <div id="yt-status" class="dl-status"></div>
-
-                    <div id="yt-result" class="dl-result">
-                        <div class="dl-thumb-row">
-                            <img id="yt-thumb" class="dl-thumb" src="" alt="Thumbnail" style="display:none">
-                            <div>
-                                <div id="yt-title" class="dl-title"></div>
-                                <div class="dl-platform">YouTube</div>
-                            </div>
-                        </div>
-                        <div id="yt-formats" style="display:flex;flex-direction:column;gap:8px"></div>
-                        <button class="dl-reset" onclick="ytReset()">↩ Download Another</button>
-                    </div>
+                <div class="dl-iframe-wrap">
+                    <iframe
+                        id="yt-iframe"
+                        src="https://snapscooper.com/tools/yt1"
+                        title="YouTube Video Downloader"
+                        allowfullscreen
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                        loading="lazy">
+                    </iframe>
                 </div>
+                <div class="dl-iframe-note">Powered by snapscooper.com — Paste your YouTube URL above and click Download.</div>
             </div>
         </div>
 
@@ -230,100 +141,15 @@
     </footer>
 
     <script>
-        let ytData = null;
-
-        // ── Auto-fill & auto-download if URL passed from homepage ──
+        // Auto-fill URL in iframe if passed via query param
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const preUrl = params.get('url');
             if (preUrl) {
-                document.getElementById('yt-url').value = preUrl;
-                ytDownload();
+                const iframe = document.getElementById('yt-iframe');
+                iframe.src = 'https://snapscooper.com/tools/yt1?url=' + encodeURIComponent(preUrl);
             }
         });
-
-        function setStatus(id, msg, type) {
-            const el = document.getElementById(id);
-            el.className = 'dl-status ' + (type || '');
-            if (!msg) { el.style.display = 'none'; return; }
-            el.innerHTML = type === 'loading'
-                ? `<div class="dl-spinner"></div><span>${msg}</span>`
-                : `<span>${msg}</span>`;
-        }
-
-        async function ytDownload() {
-            const url = document.getElementById('yt-url').value.trim();
-            if (!url) return alert('Please paste a YouTube URL first.');
-            document.getElementById('yt-result').classList.remove('show');
-            document.getElementById('yt-input-section').style.display = 'none';
-            setStatus('yt-status', 'Fetching download links...', 'loading');
-            try {
-                const r = await fetch('/api/info', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url })
-                });
-                const d = await r.json();
-                if (d.error) throw new Error(d.error);
-                ytData = d;
-                document.getElementById('yt-title').textContent = d.title || 'YouTube Video';
-                if (d.thumbnail) {
-                    const thumb = document.getElementById('yt-thumb');
-                    thumb.src = d.thumbnail;
-                    thumb.style.display = 'block';
-                }
-                // Build format buttons
-                const fmtDiv = document.getElementById('yt-formats');
-                fmtDiv.innerHTML = '';
-                const videoFmts = (d.formats || []).filter(f => f.vcodec !== 'none');
-                const audioFmts = (d.formats || []).filter(f => f.vcodec === 'none');
-                videoFmts.forEach(fmt => {
-                    const btn = document.createElement('button');
-                    btn.className = 'dl-down-btn video';
-                    btn.textContent = `⬇️ ${fmt.note || fmt.resolution} (${fmt.ext.toUpperCase()})`;
-                    btn.onclick = () => ytTrigger(fmt.decrypted_url || fmt.download_url, d.title, fmt.ext);
-                    fmtDiv.appendChild(btn);
-                });
-                audioFmts.forEach(fmt => {
-                    const btn = document.createElement('button');
-                    btn.className = 'dl-down-btn audio';
-                    btn.textContent = `🎧 ${fmt.note || 'Audio'} (${fmt.ext.toUpperCase()})`;
-                    btn.onclick = () => ytTrigger(fmt.decrypted_url || fmt.download_url, d.title, fmt.ext);
-                    fmtDiv.appendChild(btn);
-                });
-                if (!d.formats || d.formats.length === 0) throw new Error('No download links found.');
-                document.getElementById('yt-result').classList.add('show');
-                setStatus('yt-status', '', '');
-            } catch(e) {
-                document.getElementById('yt-input-section').style.display = 'block';
-                setStatus('yt-status', '⚠️ ' + (e.message || 'Could not fetch download link. Try again.'), 'error');
-            }
-        }
-
-        function ytTrigger(link, title, ext) {
-            if (!link) { setStatus('yt-status', '⚠️ No download link available.', 'error'); return; }
-            const proxyUrl = '/api/download?download_url=' + encodeURIComponent(link)
-                + '&title=' + encodeURIComponent(title || 'video')
-                + '&ext=' + (ext || 'mp4');
-            const a = document.createElement('a');
-            a.href = proxyUrl;
-            a.download = (title || 'video') + '.' + (ext || 'mp4');
-            a.target = '_blank'; a.rel = 'noreferrer';
-            document.body.appendChild(a); a.click();
-            setTimeout(() => document.body.removeChild(a), 100);
-            setStatus('yt-status', '✅ Download started!', 'success');
-        }
-
-        function ytReset() {
-            ytData = null;
-            document.getElementById('yt-url').value = '';
-            document.getElementById('yt-result').classList.remove('show');
-            document.getElementById('yt-input-section').style.display = 'block';
-            document.getElementById('yt-formats').innerHTML = '';
-            const thumb = document.getElementById('yt-thumb');
-            thumb.src = ''; thumb.style.display = 'none';
-            setStatus('yt-status', '', '');
-        }
     </script>
 </body>
 </html>
