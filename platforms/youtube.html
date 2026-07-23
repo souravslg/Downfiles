@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +12,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%237c3aed'/><text y='.9em' font-size='70' x='15'>⬇</text></svg>">
     <style>
         /* ===== Downloader Card ===== */
-        .dl-section { max-width: 900px; margin: 0 auto 4rem; padding: 0 1.5rem; }
+        .dl-section { max-width: 780px; margin: 0 auto 4rem; padding: 0 1.5rem; }
 
         .dl-card {
             background: rgba(255,255,255,0.03);
@@ -36,28 +35,116 @@
         .dl-dot.g { background:#27c93f; }
         .dl-header-label { margin-left:10px; font-size:.82rem; font-weight:700; color:rgba(255,255,255,.9); letter-spacing:.04em; }
 
-        .dl-iframe-wrap {
-            width: 100%;
-            min-height: 560px;
-            background: #0d0d1a;
-            position: relative;
-        }
+        .dl-body { padding: 32px 28px 28px; }
 
-        .dl-iframe-wrap iframe {
-            width: 100%;
-            height: 560px;
+        .dl-input-row { display: flex; gap: 10px; margin-bottom: 14px; }
+
+        .dl-input {
+            flex: 1;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.06);
+            border: 1.5px solid rgba(124,58,237,0.35);
+            border-radius: 12px;
+            color: #fff;
+            font-size: .95rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .dl-input::placeholder { color: #555; }
+        .dl-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+
+        .dl-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .dl-btn {
+            flex: 1;
+            min-width: 130px;
+            padding: 14px 18px;
             border: none;
-            display: block;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: .9rem;
+            font-family: 'Inter', sans-serif;
+            transition: transform .15s, opacity .15s, box-shadow .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .dl-btn:hover { transform: translateY(-2px); }
+        .dl-btn:active { transform: translateY(0); }
+        .dl-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+        .dl-btn-video {
+            background: linear-gradient(135deg,#7c3aed,#4f46e5);
+            color:#fff;
+            box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+        }
+        .dl-btn-video:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(124,58,237,0.5); }
+
+        .dl-btn-audio {
+            background: linear-gradient(135deg,#1db954,#17a348);
+            color:#fff;
+            box-shadow: 0 4px 20px rgba(29,185,84,0.3);
+        }
+        .dl-btn-audio:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(29,185,84,0.5); }
+
+        .dl-status {
+            margin-top: 16px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: .9rem;
+            font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        .dl-status.loading { background:rgba(99,102,241,.12); color:#a5b4fc; display:flex; }
+        .dl-status.success { background:rgba(34,197,94,.12); color:#4ade80; display:flex; }
+        .dl-status.error   { background:rgba(239,68,68,.12);  color:#f87171; display:flex; }
+
+        .dl-spinner {
+            width: 18px; height: 18px; flex-shrink:0;
+            border: 2.5px solid rgba(165,180,252,.3);
+            border-top-color: #a5b4fc;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .dl-hint {
+            margin-top: 14px;
+            font-size: .8rem;
+            color: #4a5568;
+            text-align: center;
         }
 
-        .dl-iframe-note {
-            text-align: center;
-            font-size: .78rem;
-            color: #4a5568;
-            padding: 10px 16px;
-            background: rgba(0,0,0,0.2);
-            border-top: 1px solid rgba(255,255,255,0.05);
+        .steps-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
         }
+        .step-card {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(124,58,237,0.06);
+            border: 1px solid rgba(124,58,237,0.15);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+        }
+        .step-num {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg,#7c3aed,#4f46e5);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .8rem; font-weight: 800; color: #fff;
+            margin: 0 auto 10px;
+        }
+        .step-title { font-size: .85rem; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+        .step-desc  { font-size: .75rem; color: #64748b; }
     </style>
 </head>
 <body>
@@ -89,24 +176,47 @@
             <p style="color:var(--text-muted);margin-top:.75rem;font-size:1rem">Videos, Shorts, Playlists — up to 8K quality. Free, fast, no watermark.</p>
         </div>
 
-        <!-- ===== YouTube Downloader (Embedded) ===== -->
         <div class="dl-section" id="yt-downloader">
             <div class="dl-card">
                 <div class="dl-header">
                     <span class="dl-dot r"></span><span class="dl-dot y"></span><span class="dl-dot g"></span>
                     <span class="dl-header-label">▶️ YouTube Downloader</span>
                 </div>
-                <div class="dl-iframe-wrap">
-                    <iframe
-                        id="yt-iframe"
-                        src="https://snapscooper.com/tools/yt1"
-                        title="YouTube Video Downloader"
-                        allowfullscreen
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
-                        loading="lazy">
-                    </iframe>
+                <div class="dl-body">
+                    <div class="dl-input-row">
+                        <input id="yt-url" class="dl-input" type="url"
+                            placeholder="Paste YouTube URL... e.g. https://youtube.com/watch?v=..."
+                            onkeydown="if(event.key==='Enter')ytDownload('video')">
+                    </div>
+                    <div class="dl-btn-row">
+                        <button class="dl-btn dl-btn-video" id="yt-btn-video" onclick="ytDownload('video')">
+                            ⬇️ Download Video
+                        </button>
+                        <button class="dl-btn dl-btn-audio" id="yt-btn-audio" onclick="ytDownload('audio')">
+                            🎵 Download MP3
+                        </button>
+                    </div>
+                    <div id="yt-status" class="dl-status"></div>
+                    <p class="dl-hint">✅ Free · Up to 8K · No watermark · No registration</p>
+
+                    <div class="steps-row">
+                        <div class="step-card">
+                            <div class="step-num">1</div>
+                            <div class="step-title">Paste URL</div>
+                            <div class="step-desc">Copy the YouTube video link and paste above</div>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-num">2</div>
+                            <div class="step-title">Click Download</div>
+                            <div class="step-desc">Choose Video or MP3 and the page opens</div>
+                        </div>
+                        <div class="step-card">
+                            <div class="step-num">3</div>
+                            <div class="step-title">Save Video</div>
+                            <div class="step-desc">Pick your quality and download instantly</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="dl-iframe-note">Powered by snapscooper.com — Paste your YouTube URL above and click Download.</div>
             </div>
         </div>
 
@@ -141,15 +251,57 @@
     </footer>
 
     <script>
-        // Auto-fill URL in iframe if passed via query param
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const preUrl = params.get('url');
             if (preUrl) {
-                const iframe = document.getElementById('yt-iframe');
-                iframe.src = 'https://snapscooper.com/tools/yt1?url=' + encodeURIComponent(preUrl);
+                document.getElementById('yt-url').value = preUrl;
+                setTimeout(() => ytDownload('video'), 300);
             }
         });
+
+        function setStatus(msg, type) {
+            const el = document.getElementById('yt-status');
+            el.className = 'dl-status ' + (type || '');
+            if (!msg) { el.style.display = 'none'; return; }
+            el.innerHTML = type === 'loading'
+                ? `<div class="dl-spinner"></div><span>${msg}</span>`
+                : `<span>${msg}</span>`;
+            el.style.display = 'flex';
+        }
+
+        function ytDownload(mode) {
+            const url = document.getElementById('yt-url').value.trim();
+            if (!url) {
+                setStatus('⚠️ Please paste a YouTube URL first.', 'error');
+                return;
+            }
+            if (!url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('youtube-nocookie.com')) {
+                setStatus('⚠️ That doesn\'t look like a YouTube URL. Please check and try again.', 'error');
+                return;
+            }
+
+            const btnV = document.getElementById('yt-btn-video');
+            const btnA = document.getElementById('yt-btn-audio');
+            btnV.disabled = true;
+            btnA.disabled = true;
+            setStatus('Opening download page...', 'loading');
+
+            // Build target URL — append the video URL as a query param
+            const base = 'https://snapscooper.com/tools/yt1';
+            const target = base + '?url=' + encodeURIComponent(url) + (mode === 'audio' ? '&type=mp3' : '');
+            const win = window.open(target, '_blank', 'noopener,noreferrer');
+
+            setTimeout(() => {
+                btnV.disabled = false;
+                btnA.disabled = false;
+                if (win) {
+                    setStatus('✅ Download page opened in a new tab! Choose your quality to download.', 'success');
+                } else {
+                    setStatus('⚠️ Popup was blocked by your browser. <a href="' + target + '" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc;text-decoration:underline">Click here to open</a>', 'error');
+                }
+            }, 800);
+        }
     </script>
 </body>
 </html>
