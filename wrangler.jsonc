@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "downfiles",
+  "main": "worker.js",
   "compatibility_date": "2026-07-22",
   "observability": {
     "enabled": true
@@ -11,7 +12,8 @@
       "node_modules/**",
       ".git/**",
       ".vercel/**",
-      "server/**"
+      "server/**",
+      "functions/**"
     ]
   },
   "compatibility_flags": [
