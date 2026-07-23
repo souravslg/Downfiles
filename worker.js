@@ -76,25 +76,62 @@ function decodeSnapSave(h, u, n, t, e, r) {
   return decodeURIComponent(escape(result));
 }
 
-async function fetchFacebookInfo(url) {
-  const res = await fetch('https://snapsave.app/action.php?lang=en', {
+function parseSnapsaveArgs(rawArgs) {
+  const args = [];
+  let current = "";
+  let inQuotes = false;
+  let quoteChar = "";
+  for (let i = 0; i < rawArgs.length; i++) {
+    const char = rawArgs[i];
+    if ((char === '"' || char === "'") && (i === 0 || rawArgs[i - 1] !== '\\')) {
+      if (inQuotes && quoteChar === char) {
+        inQuotes = false;
+      } else if (!inQuotes) {
+        inQuotes = true;
+        quoteChar = char;
+      }
+    } else if (char === ',' && !inQuotes) {
+      args.push(formatArg(current));
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  args.push(formatArg(current));
+  return args;
+}
+
+function formatArg(val) {
+  val = val.trim();
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    return val.slice(1, -1);
+  }
+  if (!isNaN(val)) {
+    return parseInt(val, 10);
+  }
+  return val;
+}
+
+async function fetchSnapsaveEngine(url, endpoint, platform, extraBody = '') {
+  const origin = new URL(endpoint).origin;
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Accept': '*/*',
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Origin': 'https://snapsave.app',
-      'Referer': 'https://snapsave.app/',
+      'Origin': origin,
+      'Referer': origin + '/',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     },
-    body: new URLSearchParams({ url })
+    body: 'url=' + encodeURIComponent(url) + extraBody
   });
   const text = await res.text();
   
   const match = text.match(/eval\(function\(h,u,n,t,e,r\)\{.*?\}\((.*?)\)\)/);
-  if (!match) throw new Error('Failed to find decryption scripts from Snapsave');
+  if (!match) throw new Error('Could not resolve download links from engine.');
 
   const rawArgs = match[1];
-  const args = new Function(`return [${rawArgs}]`)();
+  const args = parseSnapsaveArgs(rawArgs);
   const unpacked = decodeSnapSave(...args);
 
   if (unpacked.includes('Error:')) {
@@ -104,7 +141,7 @@ async function fetchFacebookInfo(url) {
   }
 
   const tbodyMatch = unpacked.match(/<tbody>([\s\S]*?)<\/tbody>/);
-  if (!tbodyMatch) throw new Error('No formats found in Snapsave response');
+  if (!tbodyMatch) throw new Error('No formats found in response');
 
   const tbodyHtml = tbodyMatch[1];
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -119,12 +156,13 @@ async function fetchFacebookInfo(url) {
       const hrefMatch = tds[2].match(/href=\\"(.*?)\\"|href='(.*?)'|href="(.*?)"/i);
       const downloadUrl = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3]) : null;
       if (downloadUrl) {
+        const cleanUrl = downloadUrl.replace(/\\/g, '');
         formats.push({
-          format_id: `fb_${quality.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+          format_id: `${platform.toLowerCase()}_${quality.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
           ext: 'mp4',
           resolution: quality,
-          download_url: downloadUrl.replace(/\\/g, ''),
-          decrypted_url: downloadUrl.replace(/\\/g, ''),
+          download_url: cleanUrl,
+          decrypted_url: cleanUrl,
           vcodec: 'mp4',
           acodec: 'aac',
           note: `${quality} Quality`
@@ -136,16 +174,33 @@ async function fetchFacebookInfo(url) {
   if (formats.length === 0) throw new Error('Failed to parse download formats');
 
   return {
-    title: 'Facebook Video',
+    title: platform + ' Video',
     thumbnail: '',
     duration: 0,
-    uploader: 'Facebook',
-    platform: 'Facebook',
+    uploader: platform,
+    platform: platform,
     webpage_url: url,
     formats: formats,
     best_format: formats[0].format_id
   };
 }
+
+async function fetchFacebookInfo(url) {
+  return await fetchSnapsaveEngine(url, 'https://snapsave.app/action.php?lang=en', 'Facebook');
+}
+
+async function fetchInstagramInfo(url) {
+  try {
+    return await fetchSnapsaveEngine(url, 'https://saveig.app/action.php?lang=en', 'Instagram', '&action=post');
+  } catch (e) {
+    try {
+      return await fetchSnapsaveEngine(url, 'https://snapinsta.app/action.php?lang=en', 'Instagram', '&action=post');
+    } catch (e2) {
+      return await fetchSnapsaveEngine(url, 'https://snapsave.app/action.php?lang=en', 'Instagram');
+    }
+  }
+}
+
 
 async function fetchTool77Info(url) {
   const targetUrl = expandYoutubeUrl(url);
@@ -247,7 +302,9 @@ async function fetchTool77Info(url) {
 
 async function getVideoInfo(url) {
   const isFb = url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com');
+  const isInsta = url.includes('instagram.com') || url.includes('instagr.am');
   if (isFb) return await fetchFacebookInfo(url);
+  if (isInsta) return await fetchInstagramInfo(url);
   return await fetchTool77Info(url);
 }
 
